@@ -114,6 +114,68 @@ const CASES = [
     test: "test/gate4-no-css.test.mjs",
     expect: "stylesheet-import",
   },
+  /**
+   * The bounded exception, one injected violation per new assertion.
+   *
+   * Ruling item 4 as amended permits @font-face and only @font-face, for
+   * families the token block already names. These six are what stop it widening,
+   * and the last is the ORIGINAL defect: the shipped CSS naming a family the
+   * package does not carry. It fails against the tree as it stood before this
+   * change, which is the only way to know the assertion is about the real bug.
+   */
+  {
+    gate: "gate 4 fonts",
+    what: "the font sheet carries a rule that is not an @font-face",
+    file: "dist/fonts.css",
+    mutate: (t) => `${t}\n.panel { font-weight: 700; }\n`,
+    test: "test/gate4-no-css.test.mjs",
+    expect: "is not an @font-face rule",
+  },
+  {
+    gate: "gate 4 fonts",
+    what: "the font sheet declares a family no token names",
+    file: "dist/fonts.css",
+    mutate: (t) =>
+      `${t}\n/* latin */\n@font-face {\n  font-family: "Comic Sans MS";\n  font-style: normal;\n  font-weight: 400;\n  font-display: swap;\n  src: url("./fonts/inter-latin-400-normal.woff2") format("woff2");\n  unicode-range: U+0000-00FF;\n}\n`,
+    test: "test/gate4-no-css.test.mjs",
+    expect: "token names them",
+  },
+  {
+    gate: "gate 4 fonts",
+    what: "a src url points at a file the package does not ship",
+    file: "dist/fonts.css",
+    mutate: (t) => t.replace("inter-latin-400-normal.woff2", "inter-latin-400-nowhere.woff2"),
+    test: "test/gate4-no-css.test.mjs",
+    expect: "does not resolve to a shipped file",
+  },
+  {
+    gate: "gate 4 fonts",
+    what: "a shipped font file is edited",
+    file: "fonts/files/inter-latin-400-normal.woff2",
+    mutate: (t) => `${t}\n`,
+    test: "test/gate4-no-css.test.mjs",
+    expect: "no longer matches its pinned hash",
+  },
+  {
+    gate: "gate 4 fonts",
+    what: "the product asks for a weight the package does not ship",
+    file: "vendor/index.html",
+    mutate: (t) => t.replace("Inter:wght@400;500;600;650", "Inter:wght@400;500;600;650;700"),
+    test: "test/gate4-no-css.test.mjs",
+    expect: "the product requests weights the package does not ship",
+  },
+  {
+    gate: "gate 4 fonts",
+    what: "the shipped CSS names a family no @font-face ships (the original defect)",
+    file: "dist/fonts.css",
+    mutate: (t) =>
+      t
+        .split(/(?=\/\* [a-z-]+ \*\/\n@font-face)/)
+        .filter((block) => !block.includes('font-family: "Inter"'))
+        .join(""),
+    test: "test/gate4-no-css.test.mjs",
+    expect: "no @font-face ships it",
+  },
   {
     gate: "law 3",
     what: "the quiet default is flipped to a loud one",
@@ -180,7 +242,7 @@ const results = [];
 for (const [i, c] of CASES.entries()) {
   const scratch = mkdtempSync(join(tmpdir(), `sc-kit-prove-${i}-`));
   try {
-    for (const dir of ["src", "test", "vendor", "examples", "harness", "scripts"]) {
+    for (const dir of ["src", "test", "vendor", "examples", "harness", "scripts", "fonts"]) {
       cpSync(join(ROOT, dir), join(scratch, dir), { recursive: true });
     }
     for (const f of ["package.json", "tsconfig.json", "tsconfig.examples.json"]) {

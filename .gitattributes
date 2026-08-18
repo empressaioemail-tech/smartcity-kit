@@ -1,2 +1,6 @@
 * text=auto eol=lf
 *.png binary
+# Font files are binary and must never be touched by line-ending normalization:
+# their sha256 is pinned in fonts/FONTS.json and a CRLF rewrite would break both
+# the pin and the file.
+*.woff2 binary

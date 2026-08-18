@@ -4,18 +4,28 @@
  *   dist/*.d.ts                       one declaration file per component module
  *   dist/sc-kit.css + dist/shell.css  byte copies of the vendored stylesheets
  *   dist/kit.css                      the two, concatenated in their required order
+ *   dist/fonts.css + dist/fonts/      the two declared typefaces, @font-face only
  *
- * The package adds no CSS RULE of its own. The build copies two stylesheets and
- * concatenates them into a third; it never compiles, bundles, generates or
- * transforms one. A test asserts each copy still matches its pinned upstream
- * source, and asserts kit.css is exactly those two copies in order, so the
- * concatenation cannot become a place to hide a rule.
+ * The package adds no CSS RULE of its own, with the one bounded exception the
+ * ruling grants: @font-face for families the canonical token block already
+ * names. The build copies two stylesheets and concatenates them into a third; it
+ * never compiles, bundles, generates or transforms one. A test asserts each copy
+ * still matches its pinned upstream source, and asserts kit.css is exactly those
+ * two copies in order, so the concatenation cannot become a place to hide a rule.
+ *
+ * The font sheet is emitted from fonts/FONTS.json by scripts/fonts-css.mjs and
+ * held inside the exception by test/gate4-no-css.test.mjs: every rule in it is
+ * an @font-face, every family it names is named by a token, and every file it
+ * points at ships. It is deliberately NOT folded into kit.css, whose byte
+ * equality with its two registered copies is what keeps the concatenation
+ * honest.
  */
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
+import { FONT_SUBDIR, fontsCss } from "./fonts-css.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "dist");
@@ -76,6 +86,28 @@ writeFileSync(
     readFileSync(resolve(root, "vendor", "shell.css"), "utf8"),
   ].join("\n"),
 );
+
+/**
+ * The typefaces.
+ *
+ * dist/fonts.css carries one @font-face per registered face and nothing else,
+ * and dist/fonts/ carries the files those rules point at plus the licence text
+ * that has to travel with them. Both are emitted rather than vendored so the
+ * stylesheet cannot disagree with the manifest it is written from.
+ *
+ * This is the fix for the defect that the shipped CSS named two families the
+ * package did not ship, so every design built from it rendered in a system
+ * fallback and lost the type ramp silently.
+ */
+const fontManifest = JSON.parse(readFileSync(resolve(root, "fonts/FONTS.json"), "utf8"));
+mkdirSync(resolve(dist, FONT_SUBDIR), { recursive: true });
+for (const face of fontManifest.faces) {
+  cpSync(resolve(root, face.file), resolve(dist, FONT_SUBDIR, face.file.replace(/^fonts\/files\//, "")));
+}
+for (const licence of fontManifest.licence.texts) {
+  cpSync(resolve(root, "fonts", licence.file), resolve(dist, FONT_SUBDIR, licence.file));
+}
+writeFileSync(resolve(dist, "fonts.css"), fontsCss(fontManifest));
 
 /**
  * The gallery bundle. Not shipped and not in package.json files: it is the
