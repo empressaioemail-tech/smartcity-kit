@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "emitDeclarationOnly": false,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "../dist/index.mjs": ["./dist/index.d.ts"]
+    }
+  },
+  "include": ["examples"]
+}

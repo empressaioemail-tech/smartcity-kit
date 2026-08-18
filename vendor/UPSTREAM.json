@@ -1,0 +1,66 @@
+{
+  "note": "Every file in vendor/ is a COPY. Nothing here is authored by @empressaio/smartcity-kit. Refresh with `npm run refresh:vendor -- <path-to-smartcity-dashboards-checkout>`, never by hand.",
+  "countingRule": "sha256 is taken over CRLF-normalized (\\r\\n -> \\n) UTF-8 content, because this repo is cloned on Windows with autocrlf and a raw-byte hash would report drift that does not exist in git. .gitattributes pins eol=lf so the checked-in form is LF everywhere.",
+  "sources": [
+    {
+      "file": "vendor/sc-kit.css",
+      "upstreamRepo": "empressaioemail-tech/smartcity-dashboards",
+      "upstreamRef": "main",
+      "upstreamPath": "web/sc-kit.css",
+      "capturedCommit": "cdfca39c9ed3fd7c61a13984e41b3ec1e9b6f77b",
+      "capturedOn": "2026-08-18",
+      "bytes": 4329,
+      "sha256": "2cdd0bf876ee24224eb0e976c4c29f1f79bb37324a53aac50d3d78feec113ef2",
+      "shipped": true,
+      "role": "the design tokens. Canonical copy is upstream; this is a copy."
+    },
+    {
+      "file": "vendor/shell.css",
+      "upstreamRepo": "empressaioemail-tech/smartcity-dashboards",
+      "upstreamRef": "main",
+      "upstreamPath": "web/shell.css",
+      "capturedCommit": "cdfca39c9ed3fd7c61a13984e41b3ec1e9b6f77b",
+      "capturedOn": "2026-08-18",
+      "bytes": 26142,
+      "sha256": "6c65f5f1ed9f22288b0fadc6d72d1a6fffdd8bdb5388797e93ceb1e13ae66e30",
+      "shipped": true,
+      "role": "the product class vocabulary the components render. Canonical copy is upstream; this is a copy."
+    },
+    {
+      "file": "vendor/index.html",
+      "upstreamRepo": "empressaioemail-tech/smartcity-dashboards",
+      "upstreamRef": "main",
+      "upstreamPath": "web/index.html",
+      "capturedCommit": "cdfca39c9ed3fd7c61a13984e41b3ec1e9b6f77b",
+      "capturedOn": "2026-08-18",
+      "bytes": 74840,
+      "sha256": "52c16c1a6b167bd31855168f6d14b2ec78fc6a5e8f64d0bfc2a292a167027057",
+      "shipped": false,
+      "role": "reference markup only. test/markup-parity.test.mjs compares component output against the real shipped element. Never published."
+    },
+    {
+      "file": "vendor/30b-section-4.1.css",
+      "upstreamRepo": "doc_repo",
+      "upstreamRef": "30b_smartcity_design_system.md",
+      "upstreamPath": "section 4.1 kit extract, fenced css block",
+      "capturedCommit": "n/a, doc extract",
+      "capturedOn": "2026-08-18",
+      "bytes": 3794,
+      "sha256": "20e08faf61e449e075289cbfdfef146b894538bed3f6e0ef8adba7f16b4614f9",
+      "shipped": false,
+      "role": "spec reference only. test/gate1-tokens.test.mjs pins the known delta between this and vendor/sc-kit.css so a NEW divergence fails. Never published."
+    },
+    {
+      "file": "vendor/app.js",
+      "upstreamRepo": "empressaioemail-tech/smartcity-dashboards",
+      "upstreamRef": "main",
+      "upstreamPath": "web/app.js",
+      "capturedCommit": "cdfca39c9ed3fd7c61a13984e41b3ec1e9b6f77b",
+      "capturedOn": "2026-08-18",
+      "bytes": 31987,
+      "sha256": "f2d624391fced66c4fbfe9b00b45d45c33354b6917ff58aa5a1e45c5f2798c66",
+      "shipped": false,
+      "role": "reference only. Some product markup is built at runtime rather than shipped in index.html; test/runtime-classes.test.mjs reads the class strings this file assigns so those classes are checked too. Never published."
+    }
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "generatedBy": "smartcity-dashboards@cdfca39 src/fixtures.mjs generatePipelineRecords({ cityKey: \"fixture-city\", generatesFixtures: true })",
+  "basis": "generated from the MyGov adapter output contract; no city rows were read",
+  "recordCount": 14,
+  "countsByStatus": {
+    "overdue": 3,
+    "awaiting-applicant": 4,
+    "in-review": 5,
+    "ready-to-issue": 2
+  },
+  "statusVocabulary": [
+    {
+      "id": "overdue",
+      "label": "Overdue",
+      "severity": "crit",
+      "resolved": false
+    },
+    {
+      "id": "in-review",
+      "label": "In review",
+      "severity": "info",
+      "resolved": false
+    },
+    {
+      "id": "awaiting-applicant",
+      "label": "Awaiting applicant",
+      "severity": "warn",
+      "resolved": false
+    },
+    {
+      "id": "ready-to-issue",
+      "label": "Ready to issue",
+      "severity": "ok",
+      "resolved": true
+    }
+  ],
+  "stageLabels": {
+    "intake": "Intake",
+    "routing": "Routing",
+    "review": "Review",
+    "revisions": "Revisions",
+    "issuance": "Issuance"
+  },
+  "records": [
+    {
+      "recordId": "FIX-1014",
+      "subject": "Roof replacement",
+      "stage": "revisions",
+      "status": "overdue",
+      "place": "Specimen Yard Block 7, Lot 28",
+      "dueLabel": "17 days past due",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1007",
+      "subject": "Single family addition",
+      "stage": "revisions",
+      "status": "overdue",
+      "place": "Sample Bend Block 4, Lot 19",
+      "dueLabel": "9 days past due",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1021",
+      "subject": "Patio cover",
+      "stage": "review",
+      "status": "overdue",
+      "place": "Placeholder Heights Block 8, Lot 30",
+      "dueLabel": "8 days past due",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1028",
+      "subject": "Site development permit",
+      "stage": "revisions",
+      "status": "awaiting-applicant",
+      "place": "Specimen Yard Block 6, Lot 8",
+      "dueLabel": "4 days past due",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1035",
+      "subject": "Residential solar array",
+      "stage": "revisions",
+      "status": "awaiting-applicant",
+      "place": "Fixture Ridge Block 5, Lot 26",
+      "dueLabel": "due in 1 day",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1049",
+      "subject": "Subdivision preliminary plat",
+      "stage": "revisions",
+      "status": "awaiting-applicant",
+      "place": "Example Crossing Block 6, Lot 15",
+      "dueLabel": "due in 3 days",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1042",
+      "subject": "Water service tap",
+      "stage": "revisions",
+      "status": "awaiting-applicant",
+      "place": "Template Commons Block 7, Lot 6",
+      "dueLabel": "due in 6 days",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1070",
+      "subject": "Fence and retaining wall",
+      "stage": "review",
+      "status": "in-review",
+      "place": "Example Crossing Block 3, Lot 22",
+      "dueLabel": "due in 4 days",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1084",
+      "subject": "Commercial tenant finish-out",
+      "stage": "review",
+      "status": "in-review",
+      "place": "Placeholder Heights Block 2, Lot 33",
+      "dueLabel": "due in 8 days",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1056",
+      "subject": "Demolition permit",
+      "stage": "routing",
+      "status": "in-review",
+      "place": "Placeholder Heights Block 8, Lot 24",
+      "dueLabel": "due in 9 days",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1063",
+      "subject": "Accessory dwelling unit",
+      "stage": "routing",
+      "status": "in-review",
+      "place": "Specimen Yard Block 8, Lot 29",
+      "dueLabel": "due in 12 days",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1077",
+      "subject": "Electrical service upgrade",
+      "stage": "routing",
+      "status": "in-review",
+      "place": "Placeholder Heights Block 3, Lot 31",
+      "dueLabel": "due in 12 days",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1098",
+      "subject": "Food truck park site plan",
+      "stage": "issuance",
+      "status": "ready-to-issue",
+      "place": "Example Crossing Block 7, Lot 28",
+      "dueLabel": "due in 9 days",
+      "origin": "fixture",
+      "fixture": true
+    },
+    {
+      "recordId": "FIX-1091",
+      "subject": "Sign permit",
+      "stage": "issuance",
+      "status": "ready-to-issue",
+      "place": "Template Commons Block 2, Lot 22",
+      "dueLabel": "due in 13 days",
+      "origin": "fixture",
+      "fixture": true
+    }
+  ]
+}
