@@ -27,13 +27,50 @@ export function readLf(path) {
 
 const SKIP_DIRS = new Set(["node_modules", ".git", "out"]);
 
-/** Every file under a directory, excluding node_modules, .git and build output. */
+/**
+ * Directories skipped because they are a DIFFERENT repository checked out
+ * inside this one. Recorded rather than silently dropped: an empty result is
+ * not an absence, and a scan that quietly walks into a foreign clone reports
+ * that repo's files as this one's violations.
+ *
+ * This happened. CI checked smartcity-dashboards out at .upstream/ inside the
+ * workspace so the drift test could byte-compare, and three repo-wide scans
+ * then reported the upstream product as authoring tokens and stylesheets here.
+ * CI now moves the checkout outside the workspace AND this guard exists, because
+ * a control that depends on the CI file staying right is one implementation of
+ * a rule that needs two.
+ */
+const skippedClones = new Set();
+
+export function nestedClonesSkipped() {
+  return [...skippedClones].sort();
+}
+
+function isNestedClone(dir) {
+  if (resolve(dir) === ROOT) return false;
+  try {
+    statSync(join(dir, ".git"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Every file under a directory. Excludes node_modules, .git, build output, and
+ * any nested foreign clone, which is recorded in nestedClonesSkipped().
+ */
 export function walk(dir, acc = []) {
   for (const name of readdirSync(dir)) {
     if (SKIP_DIRS.has(name)) continue;
     const full = join(dir, name);
-    if (statSync(full).isDirectory()) walk(full, acc);
-    else acc.push(full);
+    if (statSync(full).isDirectory()) {
+      if (isNestedClone(full)) {
+        skippedClones.add(rel(full));
+        continue;
+      }
+      walk(full, acc);
+    } else acc.push(full);
   }
   return acc;
 }

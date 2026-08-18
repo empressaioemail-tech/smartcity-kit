@@ -17,12 +17,28 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+/**
+ * The injected payloads are assembled from fragments rather than written out.
+ *
+ * This file is a detector of detectors, so a literal token declaration or a
+ * literal forbidden string here would trip gate 1a and the needle scan on the
+ * CLEAN tree, and the obvious fix for that would be to add this file to their
+ * exclusion lists. An instrument exclusion is part of its contract and every one
+ * added makes the contract weaker, so the payloads are joined at runtime and the
+ * exclusion set stays at exactly one file: the gate-1 test, which has to quote
+ * the pinned token line in order to pin it.
+ *
+ * CI found this. The local suite did not.
+ */
+const token = (name) => `--sc${"-"}${name}`;
+const needle = (a, b) => a + b;
+
 const CASES = [
   {
     gate: "gate 1a",
     what: "a component file declares its own token",
     file: "src/base.ts",
-    mutate: (t) => `${t}\n/* --sc-invented: #ff0000; */\n`,
+    mutate: (t) => `${t}\n/* ${token("invented")}: #ff0000; */\n`,
     test: "test/gate1-tokens.test.mjs",
     expect: "declare a --sc- token",
   },
@@ -30,7 +46,7 @@ const CASES = [
     gate: "gate 1b",
     what: "the carried token file is edited",
     file: "vendor/sc-kit.css",
-    mutate: (t) => t.replace("--sc-accent:#0B6A7B", "--sc-accent:#0B6A7C"),
+    mutate: (t) => t.replace(`${token("accent")}:#0B6A7B`, `${token("accent")}:#0B6A7C`),
     test: "test/gate1-tokens.test.mjs",
     expect: "no longer matches its pinned upstream hash",
   },
@@ -38,7 +54,7 @@ const CASES = [
     gate: "gate 1c",
     what: "a token is invented inside the carried block",
     file: "vendor/sc-kit.css",
-    mutate: (t) => t.replace("  --sc-row:44px;", "  --sc-brand-glow:8px;\n  --sc-row:44px;"),
+    mutate: (t) => t.replace(`  ${token("row")}:44px;`, `  ${token("brand-glow")}:8px;\n  ${token("row")}:44px;`),
     test: "test/gate1-tokens.test.mjs",
     expect: "30b section 4.1 does not",
   },
@@ -136,7 +152,7 @@ const CASES = [
     gate: "constraints",
     what: "a forbidden string reaches a file",
     file: "src/regions.tsx",
-    mutate: (t) => `${t}\n/* mounts the permitflow console */\n`,
+    mutate: (t) => `${t}\n/* mounts the ${needle("permit", "flow")} console */\n`,
     test: "test/constraints.test.mjs",
     expect: "forbidden strings found",
   },

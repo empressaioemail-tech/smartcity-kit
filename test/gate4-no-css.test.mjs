@@ -15,7 +15,22 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ROOT, componentFiles, readLf, rel, upstream, walk } from "./_lib.mjs";
+import { ROOT, componentFiles, nestedClonesSkipped, readLf, rel, upstream, walk } from "./_lib.mjs";
+
+test("the repo-wide scans state what they refused to walk", () => {
+  /* An empty result is not an absence. If a foreign repository is checked out
+     inside this one, every repo-wide scan here would otherwise report that
+     repo's files as this package's violations, which is what happened on the
+     first CI run. The skip is deliberate and is reported rather than hidden. */
+  walk(ROOT);
+  const skipped = nestedClonesSkipped();
+  if (skipped.length > 0) {
+    console.log(`nested clones NOT walked (their files are not this package's): ${skipped.join(", ")}`);
+  }
+  for (const dir of skipped) {
+    assert.ok(!dir.startsWith("src/"), `a nested clone inside src/ would hide component files: ${dir}`);
+  }
+});
 
 test("gate 4: every stylesheet in the repo is a registered, unmodified upstream copy", () => {
   const manifest = upstream();
