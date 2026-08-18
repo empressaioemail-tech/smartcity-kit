@@ -40,12 +40,21 @@ function runNpm(args, cwd) {
   });
 }
 
+/**
+ * A path handed to npm needs quoting on Windows, where the call goes through a
+ * shell, and must NOT be quoted anywhere else, where the quotes arrive as part
+ * of the filename. Written out because the two-platform difference is exactly
+ * the class of thing a Windows-only local run cannot see: this failed on Linux
+ * CI after passing locally.
+ */
+const npmPath = (p) => (process.platform === "win32" ? JSON.stringify(p) : p);
+
 let consumer;
 let packed;
 
 test("consumer: the package packs", () => {
   consumer = mkdtempSync(join(tmpdir(), "sc-kit-consumer-"));
-  const out = runNpm(["pack", "--pack-destination", JSON.stringify(consumer)], ROOT);
+  const out = runNpm(["pack", "--pack-destination", npmPath(consumer)], ROOT);
   const name = out.trim().split("\n").pop().trim();
   packed = join(consumer, name);
   assert.ok(existsSync(packed), `npm pack did not produce ${packed}`);
