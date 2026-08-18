@@ -28,13 +28,14 @@
  *   the inverse          a family the tokens name FIRST must have a face, which
  *                        is the original defect stated as an assertion
  */
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, sep } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { productFontUrl, requestedFaces } from "../scripts/fonts-css.mjs";
-import { ROOT, componentFiles, nestedClonesSkipped, readLf, rel, toolOutputSkipped, upstream, walk } from "./_lib.mjs";
+import { ROOT, componentFiles, nestedClonesSkipped, readLf, rel, toolOutputDeclared, toolOutputSkipped, upstream, walk } from "./_lib.mjs";
 import { fontFaceRules, tokenFamilies } from "./_fonts.mjs";
 
 const FONT_SHEET = "dist/fonts.css";
@@ -50,6 +51,40 @@ test("the repo-wide scans state what they refused to walk", () => {
   if (tools.length > 0) {
     console.log(`tool output NOT walked (generated, not authored here): ${tools.join(", ")}`);
   }
+
+  /**
+   * G-87. An empty result is not an absence, and this is where that sentence
+   * stops being a comment.
+   *
+   * Every path on the declared skip list is also in .gitignore, so on a fresh
+   * CI clone NONE of them exist and toolOutputSkipped() is legitimately empty.
+   * Asserting it is non-empty would therefore be a gate that only passes on a
+   * developer's machine. The assertion that holds in both places is the
+   * conditional one: if a declared path EXISTS, the walk must have refused it.
+   * Locally that fires on all of them; in CI it is vacuous and says so.
+   */
+  const present = toolOutputDeclared().filter((p) => existsSync(join(ROOT, p)));
+  console.log(
+    present.length > 0
+      ? `declared tool output present in this checkout: ${present.join(", ")}`
+      : "no declared tool output exists in this checkout (fresh clone), so the skip assertions below are vacuous here and enforced locally",
+  );
+  for (const p of present) {
+    assert.ok(tools.includes(p), `${p} exists but the walk did not record skipping it, so a repo-wide scan walked generated output`);
+  }
+
+  /**
+   * The regression this row exists to prevent, stated as an assertion rather
+   * than trusted to the shape of a Set. `.design-sync` as a whole must NEVER be
+   * skipped again: it holds conventions.md, which ships verbatim inside the
+   * uploaded README, and the 73 previews, which ship as the preview cards. It
+   * was skipped whole, and a real vendor-brand violation sat there with CI
+   * green.
+   */
+  assert.ok(
+    !tools.includes(".design-sync"),
+    ".design-sync was skipped as a whole. It holds authored source that ships (conventions.md, previews/), and skipping it is what let a vendor-brand violation pass CI. Skip the generated paths inside it, never the directory.",
+  );
   const skipped = nestedClonesSkipped();
   if (skipped.length > 0) {
     console.log(`nested clones NOT walked (their files are not this package's): ${skipped.join(", ")}`);
@@ -57,6 +92,57 @@ test("the repo-wide scans state what they refused to walk", () => {
   for (const dir of skipped) {
     assert.ok(!dir.startsWith("src/"), `a nested clone inside src/ would hide component files: ${dir}`);
   }
+});
+
+test("every path the scans refuse to walk is generated, not authored", () => {
+  /**
+   * G-87, the root cause rather than the symptom.
+   *
+   * The skip list was not wrong when it was written. It went STALE: `.design-sync`
+   * held only converter output at kit PR #2 and changed character at G-85 when
+   * authored source moved into it. Nothing was watching for that, so the gate
+   * quietly stopped covering a file that ships, and it took a hand-grep to find
+   * a real violation sitting behind it.
+   *
+   * The invariant that would have caught it on the day: everything the scans
+   * refuse to walk must be GENERATED, and this repo already states what is
+   * generated in one authoritative place, .gitignore. A path that is skipped but
+   * tracked by git is authored source being hidden from its own gate. That is
+   * the exact shape of the defect, and it is now an assertion rather than a
+   * comment.
+   *
+   * git is the instrument because .gitignore pattern semantics are git's, and a
+   * second implementation of them here would drift from the first. If git is not
+   * reachable this reports itself UNRUN rather than passing, on the same rule as
+   * vendor-parity arm B: a check that could not run is not a check that passed.
+   */
+  let git = true;
+  try {
+    execFileSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: ROOT, stdio: "ignore" });
+  } catch {
+    git = false;
+  }
+  if (!git) {
+    console.log("UNRUN: git is not reachable, so the skip-list-vs-.gitignore check did not run. This is an unrun check, not a pass.");
+    return;
+  }
+
+  const authored = [];
+  for (const p of toolOutputDeclared()) {
+    if (!existsSync(join(ROOT, p))) continue;
+    let ignored = true;
+    try {
+      execFileSync("git", ["check-ignore", "-q", "--", p], { cwd: ROOT, stdio: "ignore" });
+    } catch {
+      ignored = false;
+    }
+    if (!ignored) authored.push(p);
+  }
+  assert.deepEqual(
+    authored,
+    [],
+    `these paths are skipped by the repo-wide scans but are NOT gitignored, which means authored source that ships is hidden from the gate that governs it: ${authored.join(", ")}. Skip generated output only.`,
+  );
 });
 
 test("gate 4: every stylesheet in the repo is a registered, unmodified upstream copy", () => {

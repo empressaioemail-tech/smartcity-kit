@@ -12,7 +12,7 @@
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -32,6 +32,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
  */
 const token = (name) => `--sc${"-"}${name}`;
 const needle = (a, b) => a + b;
+
+/**
+ * The divergence pair below plants THIS, byte for byte, in two places: under
+ * ds-bundle/ where the converter writes, and under .design-sync/ where authored
+ * source lives. Held in one constant so "the same payload" is a fact about the
+ * code rather than a claim in a comment.
+ */
+const CONVERTER_STYLESHEET = ".panel { box-shadow: 0 2px 8px rgba(0,0,0,.3); }\n";
 
 const CASES = [
   {
@@ -226,6 +234,74 @@ const CASES = [
     test: "test/constraints.test.mjs",
     expect: "forbidden strings found",
   },
+  /**
+   * G-87, the two cases the row exists for.
+   *
+   * `expect` is the PATH, not the generic failure banner, because the
+   * requirement is that the suite turns red AND names the file. A gate that
+   * fails without saying where is a gate that gets debugged by bisection.
+   *
+   * These are not hypotheticals. A real vendor-brand violation sat in
+   * conventions.md with CI green, because walk() skipped `.design-sync` whole
+   * and conventions.md ships verbatim inside the uploaded README.
+   */
+  {
+    gate: "constraints .design-sync",
+    what: "a forbidden string reaches the conventions header, which ships inside the README",
+    file: ".design-sync/conventions.md",
+    mutate: (t) => `${t}\n\nRender the parcel map with ${needle("leaf", "let")}.\n`,
+    test: "test/constraints.test.mjs",
+    expect: ".design-sync/conventions.md",
+  },
+  {
+    gate: "constraints .design-sync",
+    what: "a forbidden string reaches a preview, which ships as a preview card",
+    file: ".design-sync/previews/Button.tsx",
+    mutate: (t) => `${t}\n/* deal sync via ${needle("pipe", "drive")} */\n`,
+    test: "test/constraints.test.mjs",
+    expect: ".design-sync/previews/Button.tsx",
+  },
+  /**
+   * THE DIVERGENCE PAIR. One payload, two locations, opposite required verdicts.
+   *
+   * Widening the scan to reach `.design-sync` re-opens exactly one risk: that
+   * gate 4 starts reading the converter's generated stylesheets as CSS this
+   * package authored. That false positive is why the skip was written in the
+   * first place (kit PR #2), so "the skip still works" cannot be left to the
+   * shape of a Set — it has to be watched.
+   *
+   * Two cases with the SAME bytes are the only honest form of that check. A
+   * single case proves a verdict; a pair proves the boundary is where it is
+   * claimed to be. If someone ever deletes ds-bundle from the skip list, the
+   * first of these goes red and says why.
+   */
+  {
+    gate: "skip list staleness",
+    what: "authored, tracked source is added to the skip list and hidden from its own gate",
+    file: "test/_lib.mjs",
+    /* `src/` is authored and tracked. Skipping it is precisely what happened to
+       `.design-sync`: a directory that was legitimately generated once, still on
+       the list after it stopped being. */
+    mutate: (t) => t.replace('  "ds-bundle",', '  "ds-bundle",\n  "src",'),
+    test: "test/gate4-no-css.test.mjs",
+    expect: "NOT gitignored",
+  },
+  {
+    gate: "gate 4 boundary",
+    what: "converter output is still NOT read as package-authored CSS",
+    file: "ds-bundle/_ds_bundle.css",
+    create: CONVERTER_STYLESHEET,
+    test: "test/gate4-no-css.test.mjs",
+    mode: "stays-clean",
+  },
+  {
+    gate: "gate 4 boundary",
+    what: "the same stylesheet IS caught when authored under .design-sync",
+    file: ".design-sync/authored.css",
+    create: CONVERTER_STYLESHEET,
+    test: "test/gate4-no-css.test.mjs",
+    expect: "authored by this package",
+  },
   {
     gate: "runtime classes",
     what: "the product assigns a class no stylesheet defines",
@@ -253,9 +329,43 @@ for (const [i, c] of CASES.entries()) {
     for (const dir of ["src", "test", "vendor", "examples", "harness", "scripts", "fonts"]) {
       cpSync(join(ROOT, dir), join(scratch, dir), { recursive: true });
     }
-    for (const f of ["package.json", "tsconfig.json", "tsconfig.examples.json"]) {
+
+    /**
+     * G-87. `.design-sync` was not copied here, and that was invisible for as
+     * long as nothing scanned it. It holds authored source that SHIPS —
+     * conventions.md travels verbatim into the uploaded README, the 73 previews
+     * become the preview cards — so a violation planted there could not fire
+     * against a scratch that did not contain the directory, and a case that
+     * cannot fire is indistinguishable from a gate that does not work.
+     *
+     * The generated paths inside it are excluded on the way in, matching what
+     * test/_lib.mjs refuses to walk. .cache is also large, and copying it per
+     * case would cost more than the whole run.
+     */
+    cpSync(join(ROOT, ".design-sync"), join(scratch, ".design-sync"), {
+      recursive: true,
+      filter: (src) => {
+        const r = relative(ROOT, src).split(sep).join("/");
+        return !(
+          r.startsWith(".design-sync/.cache") ||
+          r.startsWith(".design-sync/learnings") ||
+          r.startsWith(".design-sync/node_modules")
+        );
+      },
+    });
+    for (const f of ["package.json", "tsconfig.json", "tsconfig.examples.json", ".gitignore"]) {
       cpSync(join(ROOT, f), join(scratch, f));
     }
+
+    /**
+     * The scratch is a plain directory, not a clone, and the skip-list-vs-
+     * .gitignore guard asks git what is ignored. Without a repo here that guard
+     * reports itself UNRUN and passes, which would make it unprovable by this
+     * harness — a gate nobody can watch fail, which is the thing this file
+     * exists to prevent. `git init` plus the copied .gitignore is enough for
+     * `git check-ignore`; no commit is needed.
+     */
+    execFileSync("git", ["init", "-q"], { cwd: scratch, stdio: "ignore" });
     cpSync(join(ROOT, "node_modules"), join(scratch, "node_modules"), { recursive: true });
     cpSync(join(ROOT, "dist"), join(scratch, "dist"), { recursive: true });
 
@@ -296,10 +406,31 @@ for (const [i, c] of CASES.entries()) {
       failed = true;
       out = String(err.stdout || "") + String(err.stderr || "");
     }
-    const named = out.includes(c.expect);
-    results.push({ gate: c.gate, what: c.what, failed, named });
+    if (c.mode === "stays-clean") {
+      /**
+       * A CONTROL, not an injection. This payload is legitimate where it was
+       * planted and the gate must stay green; a failure here means the boundary
+       * moved and the gate has started reading generated output as authored.
+       */
+      results.push({
+        gate: c.gate,
+        what: c.what,
+        mode: "stays-clean",
+        ok: !failed,
+        detail: failed ? `gate fired on a legitimate file: ${out.slice(-240).replace(/\s+/g, " ").trim()}` : "",
+      });
+    } else {
+      const named = out.includes(c.expect);
+      results.push({
+        gate: c.gate,
+        what: c.what,
+        mode: "fires",
+        ok: failed && named,
+        detail: !failed ? "" : named ? "" : `failed but did not name ${c.expect}`,
+      });
+    }
   } catch (err) {
-    results.push({ gate: c.gate, what: c.what, failed: false, named: false, error: String(err.message).slice(0, 160) });
+    results.push({ gate: c.gate, what: c.what, mode: c.mode || "fires", ok: false, detail: String(err.message).slice(0, 160) });
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
@@ -307,11 +438,20 @@ for (const [i, c] of CASES.entries()) {
 
 let bad = 0;
 for (const r of results) {
-  const ok = r.failed && r.named;
-  if (!ok) bad += 1;
-  console.log(
-    `${ok ? "FIRED  " : "SILENT "} ${r.gate.padEnd(22)} ${r.what}${r.error ? `  [${r.error}]` : ""}${r.failed && !r.named ? "  [failed but did not name the violation]" : ""}`,
-  );
+  if (!r.ok) bad += 1;
+  const label = r.mode === "stays-clean" ? (r.ok ? "CLEAN  " : "MISFIRE") : r.ok ? "FIRED  " : "SILENT ";
+  console.log(`${label} ${r.gate.padEnd(24)} ${r.what}${r.detail ? `  [${r.detail}]` : ""}`);
 }
-console.log(`\n${results.length - bad} of ${results.length} injected violations were caught and named.`);
+
+/* Counting rule, stated where it is read: the denominator is every case, and
+   the two kinds are not interchangeable. An injection passes by FIRING and
+   naming its file; a control passes by STAYING GREEN. Reporting them as one
+   number without saying so would let a control that never fires be mistaken for
+   a gate that works. */
+const controls = results.filter((r) => r.mode === "stays-clean");
+const injections = results.filter((r) => r.mode !== "stays-clean");
+console.log(
+  `\n${injections.filter((r) => r.ok).length} of ${injections.length} injected violations were caught and named.` +
+    `\n${controls.filter((r) => r.ok).length} of ${controls.length} legitimate-payload controls stayed green.`,
+);
 process.exit(bad === 0 ? 0 : 1);
