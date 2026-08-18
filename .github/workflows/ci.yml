@@ -50,6 +50,17 @@ jobs:
 
       - run: npx tsc --noEmit -p tsconfig.examples.json
 
+      # A stylesheet that parses is not a font that loaded, and every other check
+      # in this suite reads text. This one runs a browser against the built dist/
+      # and fails if either declared family does not reach status "loaded" or if
+      # the rendering does not measurably change. It is here rather than in the
+      # local-only column because a guardrail that does not survive a clone is
+      # not a guardrail; it fails loudly if no Chrome is present.
+      - name: prove the typefaces actually load
+        run: npm run prove:fonts
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+
       # An unrun check and a passing check must not look the same, so CI fails
       # if arm B skipped rather than ran.
       - name: assert the upstream drift check actually ran

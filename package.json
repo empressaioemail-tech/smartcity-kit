@@ -1,6 +1,6 @@
 {
   "name": "@empressaio/smartcity-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Typed React wrapper over the SmartCity design-system class vocabulary. Renders the classes the product ships and owns no styling.",
   "license": "UNLICENSED",
   "private": false,
@@ -23,6 +23,7 @@
       }
     },
     "./kit.css": "./dist/kit.css",
+    "./fonts.css": "./dist/fonts.css",
     "./sc-kit.css": "./dist/sc-kit.css",
     "./shell.css": "./dist/shell.css",
     "./package.json": "./package.json"
@@ -45,7 +46,9 @@
     "test": "npm run build && node --test \"test/*.test.mjs\"",
     "gallery": "node harness/render-harness.mjs",
     "refresh:vendor": "node scripts/refresh-vendor.mjs",
+    "fetch:fonts": "node scripts/fetch-fonts.mjs",
     "prove:gates": "node scripts/prove-gates.mjs",
+    "prove:fonts": "node scripts/prove-fonts.mjs",
     "typecheck:examples": "npm run build && tsc --noEmit -p tsconfig.examples.json"
   },
   "peerDependencies": {

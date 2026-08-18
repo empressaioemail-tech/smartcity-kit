@@ -18,6 +18,7 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ROOT } from "./_lib.mjs";
+import { fontFaceRules } from "./_fonts.mjs";
 import { extractTarGz, readTarGz } from "./_tar.mjs";
 
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -76,7 +77,7 @@ test("consumer: the tarball carries dist and nothing else", () => {
   );
   assert.deepEqual(unexpected, [], `the tarball carries files it should not: ${unexpected.join(", ")}`);
 
-  for (const required of ["dist/index.mjs", "dist/index.cjs", "dist/index.d.ts", "dist/sc-kit.css", "dist/shell.css"]) {
+  for (const required of ["dist/index.mjs", "dist/index.cjs", "dist/index.d.ts", "dist/sc-kit.css", "dist/shell.css", "dist/kit.css", "dist/fonts.css"]) {
     assert.ok(listing.includes(required), `the tarball is missing ${required}`);
   }
 
@@ -84,6 +85,40 @@ test("consumer: the tarball carries dist and nothing else", () => {
   for (const never of ["vendor/index.html", "vendor/app.js", "vendor/30b-section-4.1.css", "examples/gallery.tsx"]) {
     assert.ok(!listing.includes(never), `${never} is reference only and must not be published`);
   }
+});
+
+test("consumer: every font the packed stylesheet points at is inside the tarball", () => {
+  /**
+   * The gate resolves the font sheet's urls against dist/ on this machine. That
+   * is not the consumer path: `files` and the exports map both sit between dist/
+   * and an installed package, and either can drop a directory while the local
+   * build stays perfect. So the check is repeated against the TARBALL, which is
+   * what an install actually receives.
+   *
+   * Counting rule: every url() in the packed dist/fonts.css, resolved relative
+   * to it, matched against the tarball's own listing.
+   */
+  const entries = readTarGz(readFileSync(packed));
+  const listing = new Set(entries.map((e) => e.name.replace(/^package\//, "")).filter(Boolean));
+  const sheet = entries.find((e) => e.name.replace(/^package\//, "") === "dist/fonts.css");
+  assert.ok(sheet, "the tarball carries no dist/fonts.css");
+
+  const { faces, violations } = fontFaceRules(sheet.body.toString("utf8").replace(/\r\n/g, "\n"));
+  assert.deepEqual(violations, [], `the packed font sheet carries rules that are not @font-face rules:\n${violations.join("\n")}`);
+  assert.ok(faces.length > 0, "the packed font sheet declares no font face");
+
+  const missing = [];
+  for (const face of faces) {
+    for (const url of face.urls) {
+      const target = `dist/${url.replace(/^\.\//, "")}`;
+      if (!listing.has(target)) missing.push(`${face.family} ${face.weight}: ${target}`);
+    }
+  }
+  assert.deepEqual(missing, [], `the packed font sheet points at files the tarball does not carry:\n${missing.join("\n")}`);
+
+  /* The licence has to travel with the binaries, not merely exist in the repo. */
+  const licences = [...listing].filter((f) => f.startsWith("dist/fonts/") && f.endsWith(".txt"));
+  assert.ok(licences.length >= 2, `the tarball carries ${licences.length} font licence texts; the Open Font License requires them to accompany the files`);
 });
 
 test("consumer: an installed package imports as ESM and renders", () => {
@@ -138,7 +173,9 @@ test("consumer: the stylesheets resolve through the exports map", () => {
       'const kit = createRequire(import.meta.url);',
       'const a = kit.resolve("@empressaio/smartcity-kit/sc-kit.css");',
       'const b = kit.resolve("@empressaio/smartcity-kit/shell.css");',
-      'console.log("CSS OK", a.endsWith("sc-kit.css") && b.endsWith("shell.css"));',
+      'const c = kit.resolve("@empressaio/smartcity-kit/kit.css");',
+      'const d = kit.resolve("@empressaio/smartcity-kit/fonts.css");',
+      'console.log("CSS OK", a.endsWith("sc-kit.css") && b.endsWith("shell.css") && c.endsWith("kit.css") && d.endsWith("fonts.css"));',
     ].join("\n"),
   );
   const out = run(process.execPath, ["css.mjs"], consumer);
