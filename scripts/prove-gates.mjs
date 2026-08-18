@@ -158,6 +158,14 @@ const CASES = [
   },
   {
     gate: "gate 4 fonts",
+    what: "the licence text that has to travel with the fonts is altered",
+    file: "fonts/OFL-Inter.txt",
+    mutate: (t) => t.replace("Copyright", "Copyright (altered)"),
+    test: "test/gate4-no-css.test.mjs",
+    expect: "pinned in the manifest",
+  },
+  {
+    gate: "gate 4 fonts",
     what: "the product asks for a weight the package does not ship",
     file: "vendor/index.html",
     mutate: (t) => t.replace("Inter:wght@400;500;600;650", "Inter:wght@400;500;600;650;700"),

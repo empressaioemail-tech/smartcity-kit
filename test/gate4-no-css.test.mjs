@@ -287,11 +287,29 @@ test("gate 4 exception: every shipped font file is registered and matches its pi
   const unregistered = inDist.filter((f) => !registered.has(f) && !licences.has(f));
   assert.deepEqual(unregistered, [], `these files ship in dist/fonts but are registered nowhere: ${unregistered.join(", ")}`);
 
+  /**
+   * The licence texts, held to the same standard as the binaries they cover. A
+   * hash recorded in a manifest and compared by nothing is a dead instrument,
+   * and this repo has been finding those all week.
+   *
+   * Counting rule, and it differs from the one above on purpose: a licence is
+   * text, .gitattributes pins eol=lf, so its sha256 is taken over
+   * CRLF-normalized content. The binaries are hashed raw. Both rules are stated
+   * in fonts/FONTS.json.
+   */
   for (const licence of manifest.licence.texts) {
+    const shipped = join(ROOT, "dist/fonts", licence.file);
     assert.ok(
-      existsSync(join(ROOT, "dist/fonts", licence.file)),
+      existsSync(shipped),
       `${licence.file} does not ship. The Open Font License permits redistribution only when the licence travels with the files.`,
     );
+    for (const path of [join(ROOT, "fonts", licence.file), shipped]) {
+      assert.equal(
+        createHash("sha256").update(readLf(path)).digest("hex"),
+        licence.sha256,
+        `${path} no longer matches the licence text pinned in the manifest, so what ships is not the licence that was fetched with the files`,
+      );
+    }
   }
 });
 
