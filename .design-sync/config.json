@@ -1,0 +1,11 @@
+{
+  "projectId": "f5e5465e-943f-4f68-b52f-608925bc07b0",
+  "shape": "package",
+  "pkg": "@empressaio/smartcity-kit",
+  "globalName": "SmartCityKit",
+  "buildCmd": "npm run build",
+  "cssEntry": "./dist/kit.css",
+  "extraFonts": [
+    "./dist/fonts.css"
+  ]
+}
