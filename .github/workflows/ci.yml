@@ -29,10 +29,15 @@ jobs:
 
       - run: npm ci
       - run: npm run typecheck
-      - run: npx tsc --noEmit -p tsconfig.examples.json
+
+      # npm test builds first, and the examples typecheck resolves against the
+      # emitted declarations in dist/, so it can only run after. Running it
+      # before was the first CI failure on this repo.
       - run: npm test
         env:
           SC_DASHBOARDS_DIR: ${{ github.workspace }}/.upstream/smartcity-dashboards
+
+      - run: npx tsc --noEmit -p tsconfig.examples.json
 
       # An unrun check and a passing check must not look the same, so CI fails
       # if arm B skipped rather than ran.

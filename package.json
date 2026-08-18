@@ -44,7 +44,8 @@
     "test": "npm run build && node --test \"test/*.test.mjs\"",
     "gallery": "node harness/render-harness.mjs",
     "refresh:vendor": "node scripts/refresh-vendor.mjs",
-    "prove:gates": "node scripts/prove-gates.mjs"
+    "prove:gates": "node scripts/prove-gates.mjs",
+    "typecheck:examples": "npm run build && tsc --noEmit -p tsconfig.examples.json"
   },
   "peerDependencies": {
     "react": ">=18"
