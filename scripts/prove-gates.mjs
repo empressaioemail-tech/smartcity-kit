@@ -1,0 +1,247 @@
+/**
+ * Proves every gate is able to FIRE.
+ *
+ * A test that has only ever passed is not a gate; it is a comment that costs
+ * CPU. This script injects one real violation per gate into a scratch copy of
+ * the repo, runs the gate against it, and asserts the gate fails AND names the
+ * violation. Then it restores.
+ *
+ * It runs against a COPY, never the working tree, so a crash cannot leave a
+ * violation behind. Exit code 0 means every gate fired.
+ */
+import { execFileSync } from "node:child_process";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * The injected payloads are assembled from fragments rather than written out.
+ *
+ * This file is a detector of detectors, so a literal token declaration or a
+ * literal forbidden string here would trip gate 1a and the needle scan on the
+ * CLEAN tree, and the obvious fix for that would be to add this file to their
+ * exclusion lists. An instrument exclusion is part of its contract and every one
+ * added makes the contract weaker, so the payloads are joined at runtime and the
+ * exclusion set stays at exactly one file: the gate-1 test, which has to quote
+ * the pinned token line in order to pin it.
+ *
+ * CI found this. The local suite did not.
+ */
+const token = (name) => `--sc${"-"}${name}`;
+const needle = (a, b) => a + b;
+
+const CASES = [
+  {
+    gate: "gate 1a",
+    what: "a component file declares its own token",
+    file: "src/base.ts",
+    mutate: (t) => `${t}\n/* ${token("invented")}: #ff0000; */\n`,
+    test: "test/gate1-tokens.test.mjs",
+    expect: "declare a --sc- token",
+  },
+  {
+    gate: "gate 1b",
+    what: "the carried token file is edited",
+    file: "vendor/sc-kit.css",
+    mutate: (t) => t.replace(`${token("accent")}:#0B6A7B`, `${token("accent")}:#0B6A7C`),
+    test: "test/gate1-tokens.test.mjs",
+    expect: "no longer matches its pinned upstream hash",
+  },
+  {
+    gate: "gate 1c",
+    what: "a token is invented inside the carried block",
+    file: "vendor/sc-kit.css",
+    mutate: (t) => t.replace(`  ${token("row")}:44px;`, `  ${token("brand-glow")}:8px;\n  ${token("row")}:44px;`),
+    test: "test/gate1-tokens.test.mjs",
+    expect: "30b section 4.1 does not",
+  },
+  {
+    gate: "gate 2",
+    what: "a component hardcodes a colour",
+    file: "src/status.tsx",
+    mutate: (t) => `${t}\nexport const ACCENT = "#0B6A7B";\n`,
+    test: "test/gate2-values.test.mjs",
+    expect: "hex-colour",
+  },
+  {
+    gate: "gate 2",
+    what: "a component hardcodes a radius",
+    file: "src/status.tsx",
+    mutate: (t) => `${t}\nexport const RADIUS = "6px";\n`,
+    test: "test/gate2-values.test.mjs",
+    expect: "px-length",
+  },
+  {
+    gate: "gate 3",
+    what: "a component emits a class no stylesheet defines",
+    file: "src/status.tsx",
+    mutate: (t) => t.replace('className={cx("pill", PILL_CLASS[meaning])}', 'className={cx("pill", "pill-hero", PILL_CLASS[meaning])}'),
+    test: "test/gate3-classes.test.mjs",
+    expect: "exist in neither",
+    rebuild: true,
+  },
+  {
+    gate: "gate 3",
+    what: "a new export is not registered in the gallery",
+    file: "src/status.tsx",
+    mutate: (t) => `${t}\nexport function Unregistered() {\n  return null;\n}\n`,
+    also: [
+      {
+        file: "src/index.ts",
+        mutate: (t) => t.replace('export { Pill, Prov, Basis, Seal, BrandCity, EnvBadge } from "./status";', 'export { Pill, Prov, Basis, Seal, BrandCity, EnvBadge, Unregistered } from "./status";'),
+      },
+    ],
+    test: "test/gate3-classes.test.mjs",
+    expect: "render no example",
+    rebuild: true,
+  },
+  {
+    gate: "gate 4",
+    what: "the package authors a stylesheet",
+    file: "src/kit-extra.css",
+    create: ".panel { box-shadow: 0 2px 8px rgba(0,0,0,.3); }\n",
+    test: "test/gate4-no-css.test.mjs",
+    expect: "authored by this package",
+  },
+  {
+    gate: "gate 4",
+    what: "a component imports a stylesheet",
+    file: "src/status.tsx",
+    mutate: (t) => `import "./nowhere.css";\n${t}`,
+    test: "test/gate4-no-css.test.mjs",
+    expect: "stylesheet-import",
+  },
+  {
+    gate: "law 3",
+    what: "the quiet default is flipped to a loud one",
+    file: "src/status.tsx",
+    mutate: (t) => t.replace('meaning = "quiet",', 'meaning = "ok",'),
+    test: "test/law.test.mjs",
+    expect: "p-quiet",
+    rebuild: true,
+  },
+  {
+    gate: "law: elevation",
+    what: "Panel gains an elevation prop",
+    file: "src/surfaces.tsx",
+    mutate: (t) => t.replace("export function Panel({ children, ...rest }: Base<HTMLDivElement> & { children?: React.ReactNode }) {", "export function Panel({ children, ...rest }: Base<HTMLDivElement> & { elevation?: number; children?: React.ReactNode }) {"),
+    test: "test/law.test.mjs",
+    expect: "elevation props found",
+  },
+  {
+    gate: "markup parity",
+    what: "a component adds a wrapper the product does not have",
+    file: "src/status.tsx",
+    mutate: (t) => t.replace('<span className={cx("pill", PILL_CLASS[meaning])} {...rest}>\n      {children}\n    </span>', '<span className={cx("pill", PILL_CLASS[meaning])} {...rest}>\n      <span>{children}</span>\n    </span>'),
+    test: "test/markup-parity.test.mjs",
+    expect: "Pill matches",
+    rebuild: true,
+  },
+  {
+    gate: "vendor parity arm B",
+    what: "upstream moves away from the copy",
+    file: "vendor/shell.css",
+    mutate: (t) => `${t}\n.panel { border-width: 2px; }\n`,
+    test: "test/vendor-parity.test.mjs",
+    expect: "has been edited",
+  },
+  {
+    gate: "constraints",
+    what: "a forbidden string reaches a file",
+    file: "src/regions.tsx",
+    mutate: (t) => `${t}\n/* mounts the ${needle("permit", "flow")} console */\n`,
+    test: "test/constraints.test.mjs",
+    expect: "forbidden strings found",
+  },
+  {
+    gate: "runtime classes",
+    what: "the product assigns a class no stylesheet defines",
+    file: "vendor/app.js",
+    mutate: (t) => `${t}\nconst unused = () => { const el = document.createElement("div"); el.className = "vendor-wallpaper"; return el; };\n`,
+    test: "test/runtime-classes.test.mjs",
+    expect: "assigns classes no stylesheet defines",
+  },
+  {
+    gate: "runtime classes",
+    what: "the kit stops covering a class the product builds at runtime",
+    file: "src/regions.tsx",
+    mutate: (t) => t.replace('        state === "max" && "is-max",\n', ""),
+    test: "test/runtime-classes.test.mjs",
+    expect: "by no kit component",
+    rebuild: true,
+  },
+];
+
+const results = [];
+
+for (const [i, c] of CASES.entries()) {
+  const scratch = mkdtempSync(join(tmpdir(), `sc-kit-prove-${i}-`));
+  try {
+    for (const dir of ["src", "test", "vendor", "examples", "harness", "scripts"]) {
+      cpSync(join(ROOT, dir), join(scratch, dir), { recursive: true });
+    }
+    for (const f of ["package.json", "tsconfig.json", "tsconfig.examples.json"]) {
+      cpSync(join(ROOT, f), join(scratch, f));
+    }
+    cpSync(join(ROOT, "node_modules"), join(scratch, "node_modules"), { recursive: true });
+    cpSync(join(ROOT, "dist"), join(scratch, "dist"), { recursive: true });
+
+    const target = join(scratch, c.file);
+    if (c.create) {
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, c.create);
+    } else {
+      const before = readFileSync(target, "utf8");
+      const after = c.mutate(before);
+      if (after === before) throw new Error(`the injected violation did not change ${c.file}`);
+      writeFileSync(target, after);
+    }
+    for (const extra of c.also || []) {
+      const p = join(scratch, extra.file);
+      const before = readFileSync(p, "utf8");
+      const after = extra.mutate(before);
+      if (after === before) throw new Error(`the injected violation did not change ${extra.file}`);
+      writeFileSync(p, after);
+    }
+
+    if (c.rebuild) {
+      execFileSync(process.execPath, [join(scratch, "scripts/build.mjs")], {
+        cwd: scratch,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    }
+
+    let out = "";
+    let failed = false;
+    try {
+      out = execFileSync(process.execPath, ["--test", join(scratch, c.test)], {
+        cwd: scratch,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (err) {
+      failed = true;
+      out = String(err.stdout || "") + String(err.stderr || "");
+    }
+    const named = out.includes(c.expect);
+    results.push({ gate: c.gate, what: c.what, failed, named });
+  } catch (err) {
+    results.push({ gate: c.gate, what: c.what, failed: false, named: false, error: String(err.message).slice(0, 160) });
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+let bad = 0;
+for (const r of results) {
+  const ok = r.failed && r.named;
+  if (!ok) bad += 1;
+  console.log(
+    `${ok ? "FIRED  " : "SILENT "} ${r.gate.padEnd(22)} ${r.what}${r.error ? `  [${r.error}]` : ""}${r.failed && !r.named ? "  [failed but did not name the violation]" : ""}`,
+  );
+}
+console.log(`\n${results.length - bad} of ${results.length} injected violations were caught and named.`);
+process.exit(bad === 0 ? 0 : 1);

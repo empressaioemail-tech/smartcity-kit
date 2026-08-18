@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The upstream checkout is what makes the drift guardrail survive a clone.
+      # Without it test/vendor-parity.test.mjs can only compare the vendored copy
+      # against its own pinned hash, which catches an edit here and cannot see
+      # smartcity-dashboards move. With it, arm B byte-compares for real.
+      - name: check out the upstream product
+        uses: actions/checkout@v4
+        with:
+          repository: empressaioemail-tech/smartcity-dashboards
+          ref: main
+          path: .upstream/smartcity-dashboards
+
+      # actions/checkout can only write inside the workspace, and a foreign repo
+      # inside the workspace is walked by every repo-wide scan in this suite. It
+      # reported the upstream product as authoring tokens and stylesheets here.
+      # Move it out; test/_lib.mjs also refuses to walk a nested clone, because
+      # one rule with one implementation is one CI edit away from being gone.
+      - name: move the upstream checkout out of the workspace
+        run: |
+          mkdir -p "$RUNNER_TEMP/upstream"
+          mv .upstream/smartcity-dashboards "$RUNNER_TEMP/upstream/smartcity-dashboards"
+          rmdir .upstream
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+
+      # npm test builds first, and the examples typecheck resolves against the
+      # emitted declarations in dist/, so it can only run after. Running it
+      # before was the first CI failure on this repo.
+      - run: npm test
+        env:
+          SC_DASHBOARDS_DIR: ${{ runner.temp }}/upstream/smartcity-dashboards
+
+      - run: npx tsc --noEmit -p tsconfig.examples.json
+
+      # An unrun check and a passing check must not look the same, so CI fails
+      # if arm B skipped rather than ran.
+      - name: assert the upstream drift check actually ran
+        run: |
+          node --test "test/vendor-parity.test.mjs" > parity.log 2>&1
+          if grep -q "arm B NOT RUN" parity.log; then
+            echo "arm B did not run; the upstream drift check is not being exercised"
+            cat parity.log
+            exit 1
+          fi
+          echo "arm B ran"
+        env:
+          SC_DASHBOARDS_DIR: ${{ runner.temp }}/upstream/smartcity-dashboards
