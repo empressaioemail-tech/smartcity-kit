@@ -3,13 +3,16 @@
  *   dist/index.mjs + dist/index.cjs   the components, React external
  *   dist/*.d.ts                       one declaration file per component module
  *   dist/sc-kit.css + dist/shell.css  byte copies of the vendored stylesheets
+ *   dist/kit.css                      the two, concatenated in their required order
  *
- * The package adds no CSS of its own, so the build never compiles, bundles,
- * generates or transforms a stylesheet. It copies two files, and a test asserts
- * each copy still matches its pinned upstream source.
+ * The package adds no CSS RULE of its own. The build copies two stylesheets and
+ * concatenates them into a third; it never compiles, bundles, generates or
+ * transforms one. A test asserts each copy still matches its pinned upstream
+ * source, and asserts kit.css is exactly those two copies in order, so the
+ * concatenation cannot become a place to hide a rule.
  */
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
@@ -50,6 +53,29 @@ cpSync(resolve(dist, "index.d.ts"), resolve(dist, "index.d.cts"));
 for (const css of ["sc-kit.css", "shell.css"]) {
   cpSync(resolve(root, "vendor", css), resolve(dist, css));
 }
+
+/**
+ * kit.css is the two stylesheets concatenated in their required order, emitted
+ * rather than vendored so it can never disagree with the copies it is built
+ * from. It exists because the order is load-bearing and unenforceable across
+ * two imports: shell.css consumes var(--sc-*) throughout and defines none of
+ * them, so a consumer who imports them the other way round, or who has a
+ * bundler that reorders, gets a fully rendered layout with every colour, size
+ * and radius falling back. One import cannot be mis-ordered.
+ *
+ * It is additive. The separate exports stay, byte-parity with upstream is
+ * unaffected, and the canonical files remain the ones in smartcity-dashboards.
+ */
+writeFileSync(
+  resolve(dist, "kit.css"),
+  [
+    "/* @empressaio/smartcity-kit — sc-kit.css then shell.css, concatenated at build time.",
+    "   Order is load-bearing: shell.css consumes the tokens sc-kit.css defines.",
+    "   Canonical sources live in smartcity-dashboards web/. Do not edit here. */",
+    readFileSync(resolve(root, "vendor", "sc-kit.css"), "utf8"),
+    readFileSync(resolve(root, "vendor", "shell.css"), "utf8"),
+  ].join("\n"),
+);
 
 /**
  * The gallery bundle. Not shipped and not in package.json files: it is the

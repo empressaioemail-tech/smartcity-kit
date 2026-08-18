@@ -30,7 +30,18 @@ npm test
 npm install @empressaio/smartcity-kit react
 ```
 
-React is a peer dependency. Import the stylesheets once, at the root of your app, in this order:
+React is a peer dependency. Import the stylesheet once, at the root of your app:
+
+```js
+import "@empressaio/smartcity-kit/kit.css";
+```
+
+`kit.css` is `sc-kit.css` followed by `shell.css`, concatenated at build time. The
+order is load-bearing and one import cannot get it wrong: `shell.css` consumes
+`var(--sc-*)` throughout and defines none of them, so the reverse order renders a
+complete layout with every colour, size and radius silently falling back.
+
+The two files stay exported separately for anyone who needs them apart:
 
 ```js
 import "@empressaio/smartcity-kit/sc-kit.css";

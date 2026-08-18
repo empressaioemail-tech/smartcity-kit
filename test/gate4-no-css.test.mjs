@@ -15,7 +15,7 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ROOT, componentFiles, nestedClonesSkipped, readLf, rel, upstream, walk } from "./_lib.mjs";
+import { ROOT, componentFiles, nestedClonesSkipped, readLf, rel, toolOutputSkipped, upstream, walk } from "./_lib.mjs";
 
 test("the repo-wide scans state what they refused to walk", () => {
   /* An empty result is not an absence. If a foreign repository is checked out
@@ -23,6 +23,10 @@ test("the repo-wide scans state what they refused to walk", () => {
      repo's files as this package's violations, which is what happened on the
      first CI run. The skip is deliberate and is reported rather than hidden. */
   walk(ROOT);
+  const tools = toolOutputSkipped();
+  if (tools.length > 0) {
+    console.log(`tool output NOT walked (generated, not authored here): ${tools.join(", ")}`);
+  }
   const skipped = nestedClonesSkipped();
   if (skipped.length > 0) {
     console.log(`nested clones NOT walked (their files are not this package's): ${skipped.join(", ")}`);
@@ -47,6 +51,16 @@ test("gate 4: every stylesheet in the repo is a registered, unmodified upstream 
     ["dist/shell.css", "vendor/shell.css"],
   ]);
 
+  /**
+   * dist/kit.css is the two registered copies concatenated in their required
+   * order, emitted by the build so it can never disagree with them. It is not
+   * an exemption: it is checked harder than a copy is, by reconstructing what
+   * the build must have produced and requiring the file to equal it byte for
+   * byte. A rule smuggled into the concatenation fails here, and so does a
+   * header that carries one.
+   */
+  const derived = "dist/kit.css";
+
   const unexplained = [];
   for (const file of stylesheets) {
     const text = readLf(join(ROOT, file));
@@ -54,6 +68,24 @@ test("gate 4: every stylesheet in the repo is a registered, unmodified upstream 
       const source = registered.get(file);
       const sha = createHash("sha256").update(text).digest("hex");
       assert.equal(sha, source.sha256, `${file} no longer matches its pinned upstream`);
+      continue;
+    }
+    if (file === derived) {
+      const header = text.slice(0, text.indexOf("*/") + 2);
+      assert.ok(header.startsWith("/*"), `${derived} must open with the provenance comment`);
+      assert.equal(
+        header.includes("{"),
+        false,
+        `${derived}'s header carries something that is not a comment`,
+      );
+      assert.equal(
+        text.slice(header.length),
+        "\n" +
+          readLf(join(ROOT, "vendor", "sc-kit.css")) +
+          "\n" +
+          readLf(join(ROOT, "vendor", "shell.css")),
+        `${derived} is not exactly its two registered copies in order — the build added or dropped something`,
+      );
       continue;
     }
     if (distCopies.has(file)) {
