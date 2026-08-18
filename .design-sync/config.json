@@ -7,5 +7,27 @@
   "cssEntry": "./dist/kit.css",
   "extraFonts": [
     "./dist/fonts.css"
-  ]
+  ],
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "ShellNav": { "viewport": "1100x700" },
+    "NavItem": { "viewport": "1100x700" },
+    "NavGroup": { "viewport": "1100x700" },
+    "ShellBody": { "viewport": "1100x700" },
+    "ShellRecede": { "viewport": "1100x700", "cardMode": "column" },
+    "ShellRegions": { "viewport": "1100x700", "cardMode": "column" },
+    "ShellTop": { "viewport": "1100x700", "cardMode": "column" },
+    "DataBody": { "cardMode": "column" },
+    "DataCell": { "cardMode": "column" },
+    "DataHead": { "cardMode": "column" },
+    "DataHeadCell": { "cardMode": "column" },
+    "DataRow": { "cardMode": "column" },
+    "DataTable": { "cardMode": "column" },
+    "Prov": { "cardMode": "column" },
+    "Stage": { "cardMode": "column" },
+    "CompassScrim": { "cardMode": "single", "primaryStory": "Wash" },
+    "CompassSheet": { "cardMode": "single", "primaryStory": "Chrome" },
+    "StageEsc": { "cardMode": "single", "primaryStory": "Map" },
+    "StageScrim": { "cardMode": "single", "primaryStory": "Ground" }
+  }
 }
