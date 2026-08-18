@@ -28,17 +28,52 @@ export function readLf(path) {
 const SKIP_DIRS = new Set(["node_modules", ".git", "out"]);
 
 /**
- * Directories that are TOOL OUTPUT rather than this package. design-sync builds
- * its converted bundle into ds-bundle/ and stages its own scripts in .ds-sync/,
+ * Paths that are TOOL OUTPUT rather than this package. design-sync builds its
+ * converted bundle into ds-bundle/ and stages its own scripts in .ds-sync/,
  * both inside the workspace; a repo-wide scan that walks them reports the
  * converter's generated stylesheets as this package authoring CSS.
  *
  * Same failure mode as the nested-clone case below, so it gets the same
  * treatment rather than a quiet exclusion: recorded, and reported by the test
  * that states what the scans refused to walk. An empty result is not an absence.
+ *
+ * G-87: this list was a set of DIRECTORY NAMES matched at the root, and it
+ * carried `.design-sync` whole. That was correct while `.design-sync` held only
+ * converter input. It went stale at G-85, when authored source moved into it,
+ * and the cost was immediate and real: `conventions.md` ships verbatim inside
+ * the uploaded README, it named four vendor brands inside a refusal guard, and
+ * CI was green on the violation because the only scan that could see it refused
+ * to walk the directory. A gate that cannot see the file it governs is not a
+ * gate.
+ *
+ * So the skip is now by PATH, not by name, and it names the tool output inside
+ * `.design-sync` rather than the whole directory. What is skipped and what is
+ * scanned is decided by one question: is it generated? Everything on this list
+ * is also in .gitignore, which is the second, independent statement of the same
+ * fact — and the reason that matters is that anything gitignored exists locally
+ * and NOT in a fresh CI clone, so a scan that walks it reports violations that
+ * only one of the two environments can ever see. Divergence between a local run
+ * and CI is the failure this program keeps paying for.
+ *
+ * Scanned now, and each one ships: conventions.md (into the README), the 73
+ * previews (into the preview cards), config.json, NOTES.md.
  */
-const TOOL_OUTPUT_DIRS = new Set(["ds-bundle", ".ds-sync", ".design-sync"]);
+const TOOL_OUTPUT_PATHS = new Set([
+  "ds-bundle",
+  ".ds-sync",
+  ".design-sync/.cache",
+  ".design-sync/learnings",
+  ".design-sync/node_modules",
+]);
 const skippedToolOutput = new Set();
+
+/** The declared skip list, so a test can assert against what SHOULD be skipped
+ *  rather than only against what happened to be encountered. An empty
+ *  toolOutputSkipped() means nothing was there to skip, which on a fresh clone
+ *  is the truth and not an absence of enforcement. */
+export function toolOutputDeclared() {
+  return [...TOOL_OUTPUT_PATHS].sort();
+}
 
 export function toolOutputSkipped() {
   return [...skippedToolOutput].sort();
@@ -81,8 +116,9 @@ export function walk(dir, acc = []) {
   for (const name of readdirSync(dir)) {
     if (SKIP_DIRS.has(name)) continue;
     const full = join(dir, name);
-    if (TOOL_OUTPUT_DIRS.has(name) && resolve(dir) === ROOT) {
-      skippedToolOutput.add(name);
+    const path = rel(full);
+    if (TOOL_OUTPUT_PATHS.has(path)) {
+      skippedToolOutput.add(path);
       continue;
     }
     if (statSync(full).isDirectory()) {
