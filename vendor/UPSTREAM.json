@@ -7,10 +7,10 @@
       "upstreamRepo": "empressaioemail-tech/smartcity-dashboards",
       "upstreamRef": "main",
       "upstreamPath": "web/sc-kit.css",
-      "capturedCommit": "c7d7980b98752fe6625e07da1e4e9b9921f67950",
+      "capturedCommit": "46e70236babb37bdc8a2406117c282495686598d",
       "capturedOn": "2026-08-19",
       "bytes": 4329,
-      "sha256": "2cdd0bf876ee24224eb0e976c4c29f1f79bb37324a53aac50d3d78feec113ef2",
+      "sha256": "9dcfeb636dfb059a8bc28986465fe20e9d1da584860c61ac371911fa1cb9dbc0",
       "shipped": true,
       "role": "the design tokens. Canonical copy is upstream; this is a copy."
     },
