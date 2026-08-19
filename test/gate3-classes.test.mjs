@@ -53,8 +53,18 @@ test("gate 3: the vocabulary denominator is the shipped stylesheet class set", (
      added, none removed, and both sides were measured with this same rule
      rather than one being derived by subtraction. The pin failing on the
      re-vendor is this gate working: it had been passing on a stale copy of
-     shell.css, which is a gate being lied to rather than a gate holding. */
-  assert.equal(SHIPPED.size, 139, "the shipped class vocabulary changed size");
+     shell.css, which is a gate being lied to rather than a gate holding.
+
+     Moved from 139 to 143 at G-90, when the product shipped the top-bar menu
+     and its popover chrome into shell.css: topmenu, pop, pop-group, pop-item.
+     Four added, none removed. Measured the same way, and the same way the pin
+     went red again: the kit's green had expired under a product merge and was
+     still reading as green because the vendored copy was stale. The stripping
+     half of the rule is load-bearing rather than theoretical here too. Counting
+     the same two copies WITHOUT stripping comments returns 150, and the seven
+     phantom tokens are css hidden html js md mjs test, all of which appear only
+     inside prose. */
+  assert.equal(SHIPPED.size, 143, "the shipped class vocabulary changed size");
 });
 
 test("coverage: the package covers the whole shipped vocabulary", () => {
