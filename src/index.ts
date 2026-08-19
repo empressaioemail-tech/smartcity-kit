@@ -103,3 +103,16 @@ export {
   CompassTurn,
   CompassNote,
 } from "./compass";
+
+export {
+  Cite,
+  ModelCite,
+  AtomChip,
+  UnverifiedSource,
+  Matrix,
+  MatrixGroup,
+  MatrixRow,
+  BasisLine,
+  Finding,
+} from "./evidence";
+export type { Applicability, Confidence, BasisLineProps } from "./evidence";

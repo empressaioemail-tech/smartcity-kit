@@ -175,9 +175,17 @@ The design law is enforced by the shape of the props, not by review.
 - **No elevation.** `Panel` has no shadow or elevation prop. A resting panel is defined by its border.
 - **No type step outside the ramp.** `Text` offers exactly the three the stylesheet ships.
 
+The evidence layer inverts three of these, and each inversion is held at the type rather than in a review comment.
+
+- **No body slot on a licensed citation.** `ModelCite` removes `children` from its prop bag, and `corpus` and `section` are strings rather than nodes. Licensed model-code text cannot leak into a screenshot, an export or a PDF, because the component that would carry it does not exist.
+- **No default applicability.** Everything else in this package defaults to its quietest form. `MatrixRow` deliberately does not, because in an inverted matrix the quietest form is `pass`, and a default would put "reviewed and clean" one omission away from an unreviewed row.
+- **No bare confidence.** There is no exported meter and no confidence prop on any other component. A confidence value can only be drawn through `BasisLine`, which requires a source count and a timestamp, and `Finding` takes the basis line's data and builds it rather than accepting a slot that could be left empty.
+
 ## Coverage
 
-The package covers **109 of 109** classes in the shipped vocabulary. The denominator is the set of distinct class-selector tokens in `vendor/sc-kit.css` and `vendor/shell.css` with CSS comments stripped, including state modifiers and element-scoped children.
+The package covers **139 of 139** classes in the shipped vocabulary. The denominator is the set of distinct class-selector tokens in `vendor/sc-kit.css` and `vendor/shell.css` with CSS comments stripped, including state modifiers and element-scoped children.
+
+The denominator moved from 109 to 139 at G-88, when the product shipped four families into `shell.css`: the code citation, the evidence chip, the applicability matrix and the finding row. Thirty classes were added and none removed. Both sides were measured with the same rule rather than one being derived by subtraction, and the number here is the one the rule returned on the re-vendored copies rather than a forecast. That distinction is not academic: three scoping estimates written before the recount predicted 117, 128 and 138 by three different methods, and all three were wrong. The recount is the only authority, and the 109 pin failing on re-vendor is the gate working, because it had been passing on a stale copy of `shell.css`.
 
 Coverage is measured by rendering, not declared: `test/gate3-classes.test.mjs` renders every component through the gallery, parses the class attributes out of the output, and checks each token against the stylesheets. A separate test asserts every export appears in the gallery, so nothing can dodge the check by being unregistered.
 

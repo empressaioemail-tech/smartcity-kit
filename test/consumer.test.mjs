@@ -273,6 +273,28 @@ const MUST_NOT_COMPILE = [
     id: "an environment badge with no environment",
     body: "<EnvBadge>Demo</EnvBadge>",
   },
+  /* G-88. The evidence layer inverts three things, and each is held at the type
+     rather than in a review comment. */
+  {
+    id: "a licensed citation carrying body copy",
+    body: '<ModelCite corpus="2018 International Building Code" section="Section 1004.5">Occupant load shall be computed as follows.</ModelCite>',
+  },
+  {
+    id: "a matrix row with no applicability, which would render as reviewed by omission",
+    body: '<MatrixRow section="Section 5.3.2" statement="Front setback" />',
+  },
+  {
+    id: "a confidence value with no source count and no timestamp",
+    body: '<BasisLine confidence={{ state: "earned", level: 4, of: 4 }} />',
+  },
+  {
+    id: "a confidence level with no state, so an asserted baseline could dress as calibrated",
+    body: '<BasisLine confidence={{ level: 4, of: 4 }} sources="3 sources" read="2026-08-17 09:42" />',
+  },
+  {
+    id: "a finding with no basis line",
+    body: '<Finding identifier="F-04" title="Occupant load exceeds the value the plan is designed to." />',
+  },
 ];
 
 test("consumer: the compiler rejects every shape the design law forbids", () => {
@@ -284,7 +306,7 @@ test("consumer: the compiler rejects every shape the design law forbids", () => 
       file,
       [
         'import * as React from "react";',
-        'import { EnvBadge, Metric, Panel, Pill, Prov, State, Text } from "@empressaio/smartcity-kit";',
+        'import { BasisLine, EnvBadge, Finding, MatrixRow, Metric, ModelCite, Panel, Pill, Prov, State, Text } from "@empressaio/smartcity-kit";',
         `export const bad = ${c.body};`,
       ].join("\n"),
     );

@@ -310,6 +310,42 @@ const CASES = [
     test: "test/runtime-classes.test.mjs",
     expect: "assigns classes no stylesheet defines",
   },
+  /* G-88. The evidence layer inverts three rules the rest of the package follows,
+     so each of the three has an instrument, and each instrument is watched
+     failing here rather than trusted on a passing run. */
+  {
+    gate: "law: licensed body slot",
+    what: "the licensed citation form regains a slot for body copy",
+    file: "src/evidence.tsx",
+    mutate: (t) =>
+      t.replace(
+        'Omit<AnchorBase, "children"> & { corpus: string; section: string }',
+        "AnchorBase & { corpus: string; section: string }",
+      ),
+    test: "test/law.test.mjs",
+    expect: "Omit<AnchorBase",
+  },
+  {
+    gate: "law: inverted applicability",
+    what: "a matrix row defaults to pass, so an unreviewed row reads as clean by omission",
+    file: "src/evidence.tsx",
+    mutate: (t) => t.replace("  applicability,", '  applicability = "pass",'),
+    test: "test/law.test.mjs",
+    /* The needle is the printed regex of the doesNotMatch assertion, not the
+       bare word: "applicability" appears in this suite for a dozen reasons and
+       a needle that loose would score an unrelated failure as this gate
+       working. */
+    expect: 'not match the regular expression /applicability',
+  },
+  {
+    gate: "law: never-bare confidence",
+    what: "the basis line drops the timestamp that earns its confidence value",
+    file: "src/evidence.tsx",
+    mutate: (t) => t.replace("      <span>{read}</span>", ""),
+    test: "test/law.test.mjs",
+    expect: "2026-08-17 09:42",
+    rebuild: true,
+  },
   {
     gate: "runtime classes",
     what: "the kit stops covering a class the product builds at runtime",
