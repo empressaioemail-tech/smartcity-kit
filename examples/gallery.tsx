@@ -1,10 +1,13 @@
 import * as React from "react";
 import {
   ActionBar,
+  AtomChip,
   Basis,
+  BasisLine,
   BrandCity,
   Button,
   ButtonLink,
+  Cite,
   CitizenColumn,
   CitizenLookup,
   CitizenScroll,
@@ -28,15 +31,20 @@ import {
   DataTable,
   EnvBadge,
   Fill,
+  Finding,
   Grow,
   Input,
   KeyValue,
   KeyValues,
   Lede,
   Lens,
+  Matrix,
+  MatrixGroup,
+  MatrixRow,
   MenuButton,
   Metric,
   MetricStrip,
+  ModelCite,
   MountNote,
   NavFoot,
   NavGroup,
@@ -73,6 +81,7 @@ import {
   Text,
   Theme,
   TitleRow,
+  UnverifiedSource,
 } from "../dist/index.mjs";
 import {
   FIXTURE_BASIS,
@@ -945,5 +954,228 @@ export const GALLERY: GalleryEntry[] = [
     covers: ["cp-note"],
     from: "index.html, a note about what the assistant cannot do",
     node: <CompassNote>The sheet is chrome until the answer engine is built.</CompassNote>,
+  },
+  /* --------------------------------------------------------------- evidence */
+  {
+    component: "Cite",
+    covers: ["cite"],
+    from: "shell.css .cite, the local-ordinance form. The product ships the CSS and no instance yet, so the composition is 30b plate 4.4b, the citation chips in a finding meta line",
+    node: (
+      <>
+        <Cite href="#s4" marker="local">
+          Template UDC Section 5.3.2
+        </Cite>
+        <Cite href="#s4" marker="local">
+          Template UDC Section 7.2.6
+        </Cite>
+        <Cite href="#s4">Template UDC Section 5.4.1</Cite>
+      </>
+    ),
+  },
+  {
+    component: "ModelCite",
+    covers: ["cite", "model", "corpus", "sect"],
+    from: "shell.css .cite.model, the licensed form. The product ships the CSS and no instance yet, so the composition is 30b plate 4.4b, the licensed citation in a finding meta line",
+    node: (
+      <>
+        <ModelCite
+          href="#s4"
+          corpus="2018 International Building Code"
+          section="Section 1004.5"
+        />
+        <ModelCite href="#s4" corpus="2018 International Building Code" section="Section 802.3" />
+      </>
+    ),
+  },
+  {
+    component: "AtomChip",
+    covers: ["atomchip", "dead", "did"],
+    from: "shell.css .atomchip. The product ships the CSS and no instance yet, so the markup contract is 30c section 6.3, the fact-row chip and the answer accordion",
+    node: (
+      <>
+        <AtomChip record="zoning 48021:34137">Record</AtomChip>
+        <AtomChip record="parcel 48021:34137" open>
+          Record
+        </AtomChip>
+        <AtomChip record="permit FIX-1014" unservable>
+          3
+        </AtomChip>
+      </>
+    ),
+  },
+  {
+    component: "UnverifiedSource",
+    covers: ["atomchip", "web"],
+    from: "shell.css .atomchip.web. 30c section 6.3: a web or unverified source is visually distinct, labelled unverified, and never wears the atom chip",
+    node: (
+      <>
+        <UnverifiedSource>Web, unverified</UnverifiedSource>
+        <UnverifiedSource>Search result, unverified</UnverifiedSource>
+      </>
+    ),
+  },
+  {
+    component: "Matrix",
+    covers: ["c", "lic", "mx", "mx-fail", "mx-pass", "mx-unc", "mx-unchecked", "mxgroup", "mxrow", "p-crit", "p-ok", "p-quiet", "p-warn", "pill", "rail", "sec", "txt"],
+    from: "shell.css .mx. The product ships the CSS and no instance yet, so the composition is 30b plate 4.4a, the applicability matrix",
+    node: (
+      <Matrix>
+        <MatrixGroup corpus="Template Unified Development Code" licence="Local, adopted 2024" />
+        <MatrixRow
+          applicability="uncertain"
+          section="Section 7.2.6"
+          statement="Drainage plan required. Site grades conflict between sheets C-101 and C-201."
+        >
+          <Pill meaning="warn">Uncertain</Pill>
+        </MatrixRow>
+        <MatrixRow applicability="pass" section="Section 5.3.2" statement="Front setback">
+          <Pill meaning="ok">Passed</Pill>
+        </MatrixRow>
+        <MatrixGroup corpus="2018 International Building Code" licence="Licensed, citation only" />
+        <MatrixRow
+          applicability="unchecked"
+          section="Section 802.3"
+          statement="Interior finish classification, not yet evaluated"
+        >
+          <Pill>Unchecked</Pill>
+        </MatrixRow>
+        <MatrixRow
+          applicability="fail"
+          section="Section 1004.5"
+          statement="Occupant load exceeds the value the submitted plan is designed to"
+        >
+          <Pill meaning="crit">Fails code</Pill>
+        </MatrixRow>
+      </Matrix>
+    ),
+  },
+  {
+    component: "MatrixGroup",
+    covers: ["c", "grow", "lic", "mxgroup", "t-caption"],
+    from: "shell.css .mxgroup. 30b plate 4.4a for the two-part header, 30c line 1109 for the trailing section count",
+    node: (
+      <>
+        <MatrixGroup corpus="Template Unified Development Code" licence="Local, adopted 2024" />
+        <MatrixGroup corpus="2018 International Building Code" licence="Licensed, citation only">
+          <Grow />
+          <Text step="caption">28 sections</Text>
+        </MatrixGroup>
+      </>
+    ),
+  },
+  {
+    component: "MatrixRow",
+    covers: ["mx-fail", "mx-pass", "mx-unc", "mx-unchecked", "mxrow", "p-crit", "p-ok", "p-quiet", "p-warn", "pill", "rail", "sec", "txt"],
+    from: "shell.css .mxrow. 30b plate 4.4a, the four values in the order a reviewer meets them",
+    node: (
+      <>
+        <MatrixRow
+          applicability="unchecked"
+          section="Section 802.3"
+          statement="Interior finish classification, not yet evaluated"
+        >
+          <Pill>Unchecked</Pill>
+        </MatrixRow>
+        <MatrixRow
+          applicability="fail"
+          section="Section 1004.5"
+          statement="Occupant load exceeds the value the submitted plan is designed to"
+        >
+          <Pill meaning="crit">Fails code</Pill>
+        </MatrixRow>
+        <MatrixRow
+          applicability="uncertain"
+          section="Section 7.2.6"
+          statement="Drainage plan required. Site grades conflict between sheets C-101 and C-201."
+        >
+          <Pill meaning="warn">Uncertain</Pill>
+        </MatrixRow>
+        <MatrixRow applicability="pass" section="Section 5.3.2" statement="Front setback">
+          <Pill meaning="ok">Passed</Pill>
+        </MatrixRow>
+      </>
+    ),
+  },
+  {
+    component: "BasisLine",
+    covers: ["basisline", "conf", "f", "meter"],
+    from: "shell.css .basisline. 30b plate 4.2b, the basis line under a provenance chip, and plate 4.4b inside a finding",
+    node: (
+      <>
+        <BasisLine
+          confidence={{ state: "provenance-backed", level: 3, of: 4 }}
+          sources="3 sources"
+          read="2026-08-17 09:42"
+          reasoning="#s4"
+        />
+        <BasisLine
+          confidence={{ state: "baseline", level: 2, of: 4 }}
+          sources="1 source"
+          read="needs a human determination"
+          reasoning="#s4"
+        />
+        <BasisLine sources={FIXTURE_BASIS} read="read when the fixture pack was generated" />
+      </>
+    ),
+  },
+  {
+    component: "Finding",
+    covers: ["basisline", "btn", "btn-primary", "btn-sm", "cite", "conf", "corpus", "crit", "f", "fact", "fbody", "fid", "finding", "fmeta", "ftitle", "meter", "model", "p-crit", "p-warn", "pill", "prov", "rail", "sect", "sep"],
+    from: "shell.css .finding. The product ships the CSS and no instance yet, so the composition is 30b plate 4.4b, the unit of a comment letter",
+    node: (
+      <>
+        <Finding
+          critical
+          identifier="F-04"
+          title="Occupant load exceeds the value the submitted plan is designed to."
+          basis={{
+            confidence: { state: "provenance-backed", level: 4, of: 4 },
+            sources: "3 sources",
+            read: "determined 2026-08-17 09:42",
+            reasoning: "#s4",
+          }}
+          actions={
+            <>
+              <Button size="sm">Override</Button>
+              <Button kind="primary" size="sm">
+                Accept
+              </Button>
+            </>
+          }
+        >
+          <ModelCite
+            href="#s4"
+            corpus="2018 International Building Code"
+            section="Section 1004.5"
+          />
+          <Prov source="Sheet A-501" detail="detail 3" />
+          <Pill meaning="crit">Fails code</Pill>
+        </Finding>
+        <Finding
+          identifier="F-05"
+          title="Drainage plan required. Site grades conflict between sheets C-101 and C-201."
+          basis={{
+            confidence: { state: "baseline", level: 2, of: 4 },
+            sources: "2 sheets",
+            read: "needs a human determination",
+            reasoning: "#s4",
+          }}
+          actions={
+            <>
+              <Button size="sm">Override</Button>
+              <Button kind="primary" size="sm">
+                Accept
+              </Button>
+            </>
+          }
+        >
+          <Cite href="#s4" marker="local">
+            Template UDC Section 7.2.6
+          </Cite>
+          <Prov source="Sheet C-101" detail="and C-201" />
+          <Pill meaning="warn">Uncertain</Pill>
+        </Finding>
+      </>
+    ),
   },
 ];

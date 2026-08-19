@@ -46,8 +46,15 @@ test("gate 3: every class the components emit exists in the shipped stylesheets"
 
 test("gate 3: the vocabulary denominator is the shipped stylesheet class set", () => {
   /* Counting rule stated at the point of use: distinct class-selector tokens in
-     the two vendored stylesheets, comments stripped. */
-  assert.equal(SHIPPED.size, 109, "the shipped class vocabulary changed size");
+     the two vendored stylesheets, comments stripped.
+
+     Moved from 109 to 139 at G-88, when the product shipped the code citation,
+     evidence chip, applicability matrix and finding row into shell.css. Thirty
+     added, none removed, and both sides were measured with this same rule
+     rather than one being derived by subtraction. The pin failing on the
+     re-vendor is this gate working: it had been passing on a stale copy of
+     shell.css, which is a gate being lied to rather than a gate holding. */
+  assert.equal(SHIPPED.size, 139, "the shipped class vocabulary changed size");
 });
 
 test("coverage: the package covers the whole shipped vocabulary", () => {

@@ -10,7 +10,7 @@
  * violation behind. Exit code 0 means every gate fired.
  */
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -219,12 +219,41 @@ const CASES = [
     rebuild: true,
   },
   {
-    gate: "vendor parity arm B",
-    what: "upstream moves away from the copy",
+    /* RELABELLED at G-88. This case was called "vendor parity arm B" and it has
+       never proven arm B. Editing a vendored file breaks its PIN, which is arm
+       A, and the needle below is arm A own message. Arm B is the only guardrail
+       in this repo that can see the PRODUCT move away from the copy, it is the
+       one that goes red when smartcity-dashboards merges without a re-vendor,
+       and it had no injection at all. Found while re-vendoring this branch after
+       the product moved under it, which is precisely the scenario arm B is for.
+       The real arm B case is the next one. */
+    gate: "vendor parity arm A",
+    what: "a vendored copy is edited here, so it no longer matches its own pin",
     file: "vendor/shell.css",
     mutate: (t) => `${t}\n.panel { border-width: 2px; }\n`,
     test: "test/vendor-parity.test.mjs",
     expect: "has been edited",
+  },
+  {
+    gate: "vendor parity arm B",
+    what: "upstream moves away from the copy while the copy still matches its own pin",
+    /* No file is edited here, deliberately. The vendored copies and their pins
+       stay correct, so arm A cannot see this and stays green; only a byte
+       compare against a live checkout can. That is the whole point of arm B and
+       it is why this case needs a divergent upstream rather than an edit. */
+    setup: (scratch) => {
+      const web = join(scratch, ".fake-upstream", "web");
+      mkdirSync(web, { recursive: true });
+      for (const f of ["sc-kit.css", "shell.css", "index.html", "app.js"]) {
+        cpSync(join(scratch, "vendor", f), join(web, f));
+      }
+      appendFileSync(join(web, "shell.css"), "\n.panel { border-width: 2px; }\n");
+      return { SC_DASHBOARDS_DIR: join(scratch, ".fake-upstream") };
+    },
+    test: "test/vendor-parity.test.mjs",
+    /* Arm B message, not arm A message. If this ever starts matching because arm
+       A fired, the case has stopped proving what it claims. */
+    expect: "has drifted from",
   },
   {
     gate: "constraints",
@@ -310,6 +339,42 @@ const CASES = [
     test: "test/runtime-classes.test.mjs",
     expect: "assigns classes no stylesheet defines",
   },
+  /* G-88. The evidence layer inverts three rules the rest of the package follows,
+     so each of the three has an instrument, and each instrument is watched
+     failing here rather than trusted on a passing run. */
+  {
+    gate: "law: licensed body slot",
+    what: "the licensed citation form regains a slot for body copy",
+    file: "src/evidence.tsx",
+    mutate: (t) =>
+      t.replace(
+        'Omit<AnchorBase, "children"> & { corpus: string; section: string }',
+        "AnchorBase & { corpus: string; section: string }",
+      ),
+    test: "test/law.test.mjs",
+    expect: "Omit<AnchorBase",
+  },
+  {
+    gate: "law: inverted applicability",
+    what: "a matrix row defaults to pass, so an unreviewed row reads as clean by omission",
+    file: "src/evidence.tsx",
+    mutate: (t) => t.replace("  applicability,", '  applicability = "pass",'),
+    test: "test/law.test.mjs",
+    /* The needle is the printed regex of the doesNotMatch assertion, not the
+       bare word: "applicability" appears in this suite for a dozen reasons and
+       a needle that loose would score an unrelated failure as this gate
+       working. */
+    expect: 'not match the regular expression /applicability',
+  },
+  {
+    gate: "law: never-bare confidence",
+    what: "the basis line drops the timestamp that earns its confidence value",
+    file: "src/evidence.tsx",
+    mutate: (t) => t.replace("      <span>{read}</span>", ""),
+    test: "test/law.test.mjs",
+    expect: "2026-08-17 09:42",
+    rebuild: true,
+  },
   {
     gate: "runtime classes",
     what: "the kit stops covering a class the product builds at runtime",
@@ -369,16 +434,23 @@ for (const [i, c] of CASES.entries()) {
     cpSync(join(ROOT, "node_modules"), join(scratch, "node_modules"), { recursive: true });
     cpSync(join(ROOT, "dist"), join(scratch, "dist"), { recursive: true });
 
-    const target = join(scratch, c.file);
-    if (c.create) {
-      mkdirSync(dirname(target), { recursive: true });
-      writeFileSync(target, c.create);
-    } else {
-      const before = readFileSync(target, "utf8");
-      const after = c.mutate(before);
-      if (after === before) throw new Error(`the injected violation did not change ${c.file}`);
-      writeFileSync(target, after);
+    /* Most cases plant their violation IN a file. One cannot: arm B fires when
+       the PRODUCT moves and this repo does not, so its injection is a divergent
+       upstream checkout rather than an edit here. `setup` builds that and hands
+       back the environment the test needs to see it. */
+    if (c.file) {
+      const target = join(scratch, c.file);
+      if (c.create) {
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, c.create);
+      } else {
+        const before = readFileSync(target, "utf8");
+        const after = c.mutate(before);
+        if (after === before) throw new Error(`the injected violation did not change ${c.file}`);
+        writeFileSync(target, after);
+      }
     }
+    const caseEnv = c.setup ? c.setup(scratch) || {} : {};
     for (const extra of c.also || []) {
       const p = join(scratch, extra.file);
       const before = readFileSync(p, "utf8");
@@ -401,6 +473,7 @@ for (const [i, c] of CASES.entries()) {
         cwd: scratch,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, ...caseEnv },
       });
     } catch (err) {
       failed = true;

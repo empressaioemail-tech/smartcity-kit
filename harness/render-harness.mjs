@@ -94,12 +94,15 @@ writeFileSync(
 );
 
 /* Split pages so a screenshot of the gallery is legible rather than a postage
-   stamp of seventy entries. Same entries, same order, three files. */
+   stamp of eighty entries. Same entries, same order, twenty to a page, and the
+   last part runs to the end so a new component cannot fall off the bottom
+   unrendered. */
 const PARTS = [
   { id: "1", from: 0, to: 20 },
   { id: "2", from: 20, to: 40 },
   { id: "3", from: 40, to: 60 },
-  { id: "4", from: 60, to: GALLERY.length },
+  { id: "4", from: 60, to: 80 },
+  { id: "5", from: 80, to: GALLERY.length },
 ];
 for (const part of PARTS) {
   writeFileSync(
@@ -159,6 +162,7 @@ const SHOTS = [
   { file: "gallery-part2.html", out: "gallery-part2.png", size: "1100,2100" },
   { file: "gallery-part3.html", out: "gallery-part3.png", size: "1100,2400" },
   { file: "gallery-part4.html", out: "gallery-part4.png", size: "1100,2000" },
+  { file: "gallery-part5.html", out: "gallery-part5.png", size: "1100,3000" },
   { file: "screen-kit.html", out: "screen-kit.png", size: "1600,1000" },
   { file: "screen-product.html", out: "screen-product.png", size: "1600,1000" },
   { file: "screen-kit-compass.html", out: "screen-kit-compass.png", size: "700,420" },

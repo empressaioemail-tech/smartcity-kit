@@ -48,9 +48,21 @@ Resting panels are `.panel`: `--sc-surface`, 1px `--sc-line`, `--sc-r` 6px, no s
 
 `.cz-scroll` with `.sc-light` is the public lens inside a staff session. `.cz` is the 720px reading column. `.citizen-lookup` is the address field. Staff vocabulary does not leak: never publish a reviewer name, an internal routing step, or a live operational feed on an unauthenticated view.
 
+## Evidence
+
+Four families carry what a determination cites and what backs it. All four ship in the stylesheet and all four are wrapped, so do not invent a substitute for any of them.
+
+`.cite` is the code citation. Two forms, and the form is chosen by the source, not by available space. Bare `.cite` is a city adopted ordinance, which carries no licensing constraint and may link to full quoted text. `.cite.model` is licensed model code: a full canonical corpus title above a section identifier, and **no slot for body copy anywhere in the family**. That absence is the enforcement mechanism. A section identifier and heading may sit beside our own analysis; the section body may not, at any density, in any layout. There is no compact form and an abbreviation alone is never printed.
+
+`.atomchip` is the evidence chip and it marks a thing you can open and read the record of. It always carries a compact label and a mono record identifier (`.did`). `.atomchip.dead` is an unservable record and still opens. `.atomchip.web` is an unverified source: neutral, differently shaped, and it never wears the reserved accent. Numbers, emphasis, web links and unverified sources are not atom chips.
+
+`.mx` is the applicability matrix and **it is inverted**. Rows group under a `.mxgroup` header that prints the full canonical title once. Pass is the quietest row on the page: grey text, no fill, no rail. Fail takes the critical rail and wash, Uncertain the warn rail and wash, and Unchecked a diagonal hatch, the plat-drawing convention for nobody has been here yet, because unreviewed is more dangerous than failed and must never read as clean. Never put a green wash on a passing row, and never leave a row without one of the four values.
+
+`.finding` is the unit of a comment letter: rail, `.fid`, `.ftitle`, a `.fmeta` line carrying the citation and the sheet reference and the status pill, then `.basisline`, then `.fact` for adjudication. Accept and override sit at equal weight. Confidence always carries its state (baseline, provenance-backed or earned) plus source count and timestamp, in `.basisline .conf` with the `.meter`. A confidence value with no basis is prohibited by the shape of the component.
+
 ## What this kit does not ship
 
-The applicability matrix (`.mx` `.mxrow` `.mx-pass` `.mx-fail` `.mx-unc` `.mx-unchecked`), the code citation (`.cite`), and the atom chip (`.atomchip`) are named in the design law and have no CSS in any shipped stylesheet. Do not invent them. Draw Plan Review without those three until the product ships their CSS. Documentation-only classes (`doc`, `plate`, `tbl`, `callout`, …) are not product.
+Documentation-only classes (`doc`, `plate`, `tbl`, `callout`, …) are not product. Classes the design law names but no stylesheet defines are not wrapped, because a component emitting a class no stylesheet defines renders unstyled. Do not invent one.
 
 ## Fixture content
 

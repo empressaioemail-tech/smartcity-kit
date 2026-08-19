@@ -50,6 +50,18 @@ jobs:
 
       - run: npx tsc --noEmit -p tsconfig.examples.json
 
+      # The injection harness, and it is the reason the rest of this job means
+      # anything. Every other step above proves the gates PASS on a clean tree,
+      # which is what a gate that has been silently disabled also does. This one
+      # plants a real violation per gate in a scratch copy and fails unless the
+      # gate goes red AND names it. It ran only when someone remembered to type
+      # it, which is the control shape DEV_PROCESS rule 0 is written about, so it
+      # runs here now. No browser, no network, and it builds its own scratch from
+      # the dist/ that npm test already produced, so it has to stay after that
+      # step. Roughly a minute.
+      - name: prove every gate can fire
+        run: npm run prove:gates
+
       # A stylesheet that parses is not a font that loaded, and every other check
       # in this suite reads text. This one runs a browser against the built dist/
       # and fails if either declared family does not reach status "loaded" or if
