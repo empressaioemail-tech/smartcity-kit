@@ -14,6 +14,10 @@
  *                            own, so an id is a consumer fact.
  *   hidden elements          runtime state. The product ships every conditional
  *                            branch in the page and hides the inactive one.
+ *                            `shapeAtRevealed` skips this test on the SELECTED
+ *                            element only, for the G-90 popovers, which the
+ *                            product ships closed and which would otherwise be
+ *                            uncomparable. Its reason is at that function.
  *   every other attribute    aria, role, title, href, type, disabled, data-*.
  *                            Behaviour, not class vocabulary. Only tag and class
  *                            are compared, so the identity injection markers the
@@ -39,14 +43,16 @@ function collapse(text) {
  * A normalized shape string. Readable on failure on purpose: a parity failure
  * that prints two blobs of minified HTML gets skipped rather than read.
  */
-export function shape(node, depth = 0) {
+export function shape(node, depth = 0, reveal = false) {
   if (node.nodeType === 3) {
     const t = collapse(node.text);
     return t ? `${"  ".repeat(depth)}"${t}"` : "";
   }
   if (node.nodeType !== 1) return "";
 
-  if (node.hasAttribute && node.hasAttribute("hidden")) return "";
+  /* `reveal` applies to THIS node only. The recursive call below does not pass
+     it on, so a revealed root keeps hidden descendants dropped. */
+  if (!reveal && node.hasAttribute && node.hasAttribute("hidden")) return "";
 
   const tag = node.rawTagName?.toLowerCase();
   const classes = (node.getAttribute("class") || "")
@@ -76,6 +82,31 @@ export function referencePage(html) {
       const el = root.querySelector(selector);
       if (!el) throw new Error(`reference selector matched nothing: ${selector}`);
       return shape(el);
+    },
+    /**
+     * The same, with the hidden test skipped ON THE SELECTED ELEMENT ONLY.
+     *
+     * Added at G-90 and it is a widening of the normalization contract above,
+     * so it is stated here rather than used quietly. The product ships every
+     * conditional branch in the page and hides the inactive one, which is why
+     * hidden elements are normalized away. Both G-90 popovers ship hidden, so a
+     * parity case for the popover panel under the plain rule would compare an
+     * empty string against an empty string: green forever and unable to fail
+     * for the right reason, which is the defect DEV_PROCESS 2.2 is about.
+     *
+     * `reveal` does not propagate. Descendants keep the hidden test, so the
+     * hidden feedback form inside the account menu stays dropped, which is
+     * correct: it is runtime state, not a shape the product always serves.
+     *
+     * This cannot go vacuously green in the other direction either. The kit side
+     * of such a case renders the panel OPEN, so it emits no hidden attribute and
+     * its shape is never empty; a bug that made this return "" turns the case
+     * red rather than green.
+     */
+    shapeAtRevealed(selector) {
+      const el = root.querySelector(selector);
+      if (!el) throw new Error(`reference selector matched nothing: ${selector}`);
+      return shape(el, 0, true);
     },
     /** All elements matching, as normalized shapes. */
     shapesAt(selector) {

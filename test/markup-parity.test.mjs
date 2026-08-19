@@ -16,6 +16,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
+  Basis,
   BrandCity,
   Button,
   EnvBadge,
@@ -23,7 +24,12 @@ import {
   Input,
   Metric,
   MountNote,
+  PanelBody,
+  PanelHead,
   Pill,
+  Pop,
+  PopGroup,
+  PopItem,
   Prov,
   RegionBar,
   RegionFoot,
@@ -32,12 +38,21 @@ import {
   Seal,
   SourceRow,
   Text,
+  TopMenu,
 } from "../dist/index.mjs";
 import { OverviewLens, SCREENS, Sidebar, TopBar } from "../harness/out/gallery.mjs";
 import { ROOT, readLf } from "./_lib.mjs";
-import { firstDifference, referencePage, shapeOf } from "./_markup.mjs";
+import { firstDifference, referencePage, shape, shapeOf } from "./_markup.mjs";
 
 const page = referencePage(readLf(join(ROOT, "vendor/index.html")));
+/* The two G-90 trigger glyphs, copied from the shipped markup rather than
+   redrawn. Element order inside the svg is part of the parity claim. */
+const bellIcon = React.createElement(
+  "svg",
+  { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.4" },
+  React.createElement("path", { d: "M4 6.6a4 4 0 018 0c0 3 1 3.9 1 3.9H3s1-.9 1-3.9z" }),
+  React.createElement("path", { d: "M6.6 12.8a1.6 1.6 0 002.8 0" }),
+);
 const searchIcon = React.createElement(
   "svg",
   { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1.6" },
@@ -159,6 +174,27 @@ const CASES = [
     ),
   },
   {
+    /* G-90. The wrapper and its trigger, and that is ALL this case can prove:
+       the panel inside is shipped hidden and the normalizer drops it. The panel
+       itself is compared by the revealed case further down. */
+    component: "TopMenu",
+    selector: ".shell-top .topmenu",
+    node: React.createElement(
+      TopMenu,
+      null,
+      React.createElement(
+        Button,
+        { kind: "ghost", size: "sm", "aria-label": "Notifications" },
+        bellIcon,
+      ),
+      React.createElement(
+        Pop,
+        { label: "Notifications" },
+        React.createElement(PanelHead, { title: "Notifications" }),
+      ),
+    ),
+  },
+  {
     component: "MountNote, with heading",
     selector: "#atab-map .mount-note",
     node: React.createElement(
@@ -211,4 +247,70 @@ test("markup parity: the queue table head matches the shipped column order", () 
     .querySelectorAll("#ds-pipeline-records .dt thead th")
     .map((th) => th.text.trim());
   assert.deepEqual(heads, ["Case", "Subject", "Stage", "Place", "Due", "Status"]);
+});
+
+
+/* ----------------------------------------------- G-90, the top-bar popovers */
+
+test("markup parity: the notification popover matches the shipped panel", () => {
+  /* The reference is REVEALED: the product ships this panel hidden and the
+     normalizer drops hidden elements, so the plain rule would compare two empty
+     strings here and could never fail. The widening is stated at
+     shapeAtRevealed in test/_markup.mjs and applies to the selected element
+     only, so anything hidden INSIDE stays dropped.
+
+     The kit side renders open, which is why this cannot go vacuously green: an
+     open Pop emits no hidden attribute, so its shape is never empty. */
+  const product = page.shapeAtRevealed("#notif-pop");
+  const kit = shapeOf(
+    renderToStaticMarkup(
+      React.createElement(
+        Pop,
+        { label: "Notifications", open: true },
+        React.createElement(PanelHead, { title: "Notifications" }),
+        React.createElement(
+          PanelBody,
+          null,
+          React.createElement(Text, { as: "p", step: "caption" }, "No notifications."),
+          React.createElement(Basis, null, "not read"),
+          React.createElement(Text, { as: "p", step: "caption" }, "Counting rule: not read"),
+        ),
+      ),
+    ),
+  );
+  assert.equal(kit, product, `
+${firstDifference(kit, product)}
+
+kit:
+${kit}
+
+product:
+${product}`);
+});
+
+test("markup parity: PopGroup and PopItem match a shipped account-menu group", () => {
+  /* Selected through a child id rather than by position, because ".pop-group"
+     alone returns the first group and an index into a five-element list is a
+     silent way to start comparing a different group than the one the case
+     names. This is the group where the reason is stated per entry, which is the
+     form PopItem's `unavailable` prop renders. */
+  const product = shape(page.root.querySelector("#acct-support").parentNode);
+  const kit = shapeOf(
+    renderToStaticMarkup(
+      React.createElement(
+        PopGroup,
+        null,
+        React.createElement(PopItem, { unavailable: "not read" }, "Support"),
+        React.createElement(PopItem, { unavailable: "not read" }, "Feedback"),
+      ),
+    ),
+  );
+  assert.equal(kit, product, `
+${firstDifference(kit, product)}
+
+kit:
+${kit}
+
+product:
+${product}`);
 });

@@ -74,6 +74,10 @@ export {
   Lede,
   Lens,
   TabPanel,
+  TopMenu,
+  Pop,
+  PopGroup,
+  PopItem,
 } from "./shell";
 export type { NavState } from "./shell";
 

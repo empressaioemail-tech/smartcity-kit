@@ -206,6 +206,46 @@ test("the evidence chip and the unverified source are different elements, not on
   assert.doesNotMatch(web, /aria-expanded/);
 });
 
+/* --------------------------------------- the top-bar menu family, G-90 */
+
+test("honest absence: a PopItem cannot be unavailable without saying why", () => {
+  /* The product's own rule, in shell.css at .pop-item[disabled]: "An unavailable
+     entry reads as unavailable rather than merely unresponsive. Its reason is
+     the .basis line its group carries, filled from the server."
+
+     Held by removing the escape hatch rather than by review. There is no
+     `disabled` prop, so the only way to grey an entry out is `unavailable`, and
+     `unavailable` is not a flag: it IS the basis text. test/consumer.test.mjs
+     watches the compiler reject `disabled` on the offending line; this asserts
+     the removal is still in the source that produces those types. */
+  const source = readLf(join(ROOT, "src/shell.tsx"));
+  assert.match(source, /Omit<ButtonBase,\s*"disabled">/);
+
+  const available = render(React.createElement(kit.PopItem, null, "Sign in"));
+  assert.equal(available, '<button type="button" class="pop-item">Sign in</button>');
+  assert.doesNotMatch(available, /disabled/);
+
+  const unavailable = render(
+    React.createElement(kit.PopItem, { unavailable: "not read" }, "Sign out"),
+  );
+  assert.equal(
+    unavailable,
+    '<button type="button" class="pop-item" disabled="">Sign out</button><span class="basis">Basis: not read</span>',
+  );
+});
+
+test("law 3: a Pop is closed by omission, so a popover cannot open itself by default", () => {
+  /* The loudest thing a top bar can do is put a panel over the page. Closed is
+     the quiet default and it is also the state the product's static document
+     ships, so the cheapest thing to write is the shipped thing. */
+  const source = readLf(join(ROOT, "src/shell.tsx"));
+  assert.match(source, /open = false/);
+  const closed = render(React.createElement(kit.Pop, { label: "Notifications" }));
+  assert.equal(closed, '<div class="panel pop" role="group" aria-label="Notifications" hidden=""></div>');
+  const open = render(React.createElement(kit.Pop, { label: "Notifications", open: true }));
+  assert.doesNotMatch(open, /hidden/);
+});
+
 test("environment: EnvBadge has no default, so a demo can never render as live by omission", () => {
   const source = readLf(join(ROOT, "src/status.tsx"));
   assert.match(source, /environment:\s*"demo"\s*\|\s*"live"\s*\|\s*"staging";/);

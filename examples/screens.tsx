@@ -31,6 +31,9 @@ import {
   PanelBody,
   PanelHead,
   Pill,
+  Pop,
+  PopGroup,
+  PopItem,
   Prov,
   RegisterGroup,
   Region,
@@ -50,6 +53,7 @@ import {
   State,
   Text,
   TitleRow,
+  TopMenu,
 } from "../dist/index.mjs";
 
 /**
@@ -86,6 +90,47 @@ const searchIcon = (
   </svg>
 );
 
+/* The three glyphs G-90 added to the top bar, copied from the shipped markup
+   rather than redrawn: element order inside an svg is part of what
+   test/markup-parity.test.mjs compares. */
+const themeIcon = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+    <circle cx="8" cy="8" r="3.2" />
+    <path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.9 3.1l-1.1 1.1M4.2 11.8l-1.1 1.1M12.9 12.9l-1.1-1.1M4.2 4.2L3.1 3.1" />
+  </svg>
+);
+
+const bellIcon = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+    <path d="M4 6.6a4 4 0 018 0c0 3 1 3.9 1 3.9H3s1-.9 1-3.9z" />
+    <path d="M6.6 12.8a1.6 1.6 0 002.8 0" />
+  </svg>
+);
+
+const accountIcon = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+    <circle cx="8" cy="5.6" r="2.6" />
+    <path d="M2.9 13.4a5.4 5.4 0 0110.2 0" />
+  </svg>
+);
+
+/**
+ * The top bar, and it grew at G-90.
+ *
+ * The product added a theme toggle and two top-bar menus, and this composition
+ * had to follow or the parity case goes red — which is exactly what it did when
+ * the kit re-vendored: the shipped top bar had three controls the composed one
+ * did not. That failure is the composed screen doing its job.
+ *
+ * Both popovers are composed CLOSED, as the product ships them. The normalizer
+ * drops hidden elements, so what the parity case compares here is the wrapper
+ * and its trigger; the panels themselves are compared by their own revealed
+ * cases in test/markup-parity.test.mjs.
+ *
+ * Every entry is unavailable with a stated reason, which is how the product
+ * ships all seven of them: nothing here has heard from a server, so nothing here
+ * may look available.
+ */
 export function TopBar() {
   return (
     <ShellTop>
@@ -107,6 +152,53 @@ export function TopBar() {
       <CompassSource scope="This city · Overview" aria-expanded="false" aria-controls="cp-sheet">
         {compassIcon}
       </CompassSource>
+      <Button kind="ghost" size="sm" title="Switch to the light theme">
+        {themeIcon}
+        <span>Light</span>
+      </Button>
+      <TopMenu>
+        <Button kind="ghost" size="sm" aria-label="Notifications" aria-expanded="false">
+          {bellIcon}
+        </Button>
+        <Pop label="Notifications">
+          <PanelHead title="Notifications" />
+          <PanelBody>
+            <Text as="p" step="caption">
+              No notifications.
+            </Text>
+            <Basis>not read</Basis>
+            <Text as="p" step="caption">
+              Counting rule: not read
+            </Text>
+          </PanelBody>
+        </Pop>
+      </TopMenu>
+      <TopMenu>
+        <Button kind="ghost" size="sm" aria-label="Account" aria-expanded="false">
+          {accountIcon}
+        </Button>
+        <Pop label="Account">
+          <PanelHead title="Session not read">
+            <Pill>Anonymous</Pill>
+          </PanelHead>
+          <PanelBody flush>
+            <PopGroup basis="not read" />
+            <PopGroup>
+              <PopItem unavailable="not read">My account</PopItem>
+              <PopItem unavailable="not read">My profile</PopItem>
+              <PopItem unavailable="not read">Account settings</PopItem>
+            </PopGroup>
+            <PopGroup>
+              <PopItem unavailable="not read">Support</PopItem>
+              <PopItem unavailable="not read">Feedback</PopItem>
+            </PopGroup>
+            <PopGroup>
+              <PopItem unavailable="not read">Sign in</PopItem>
+              <PopItem unavailable="not read">Sign out</PopItem>
+            </PopGroup>
+          </PanelBody>
+        </Pop>
+      </TopMenu>
     </ShellTop>
   );
 }

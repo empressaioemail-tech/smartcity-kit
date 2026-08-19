@@ -183,9 +183,13 @@ The evidence layer inverts three of these, and each inversion is held at the typ
 
 ## Coverage
 
-The package covers **139 of 139** classes in the shipped vocabulary. The denominator is the set of distinct class-selector tokens in `vendor/sc-kit.css` and `vendor/shell.css` with CSS comments stripped, including state modifiers and element-scoped children.
+The package covers **143 of 143** classes in the shipped vocabulary. The denominator is the set of distinct class-selector tokens in `vendor/sc-kit.css` and `vendor/shell.css` with CSS comments stripped, including state modifiers and element-scoped children.
 
 The denominator moved from 109 to 139 at G-88, when the product shipped four families into `shell.css`: the code citation, the evidence chip, the applicability matrix and the finding row. Thirty classes were added and none removed. Both sides were measured with the same rule rather than one being derived by subtraction, and the number here is the one the rule returned on the re-vendored copies rather than a forecast. That distinction is not academic: three scoping estimates written before the recount predicted 117, 128 and 138 by three different methods, and all three were wrong. The recount is the only authority, and the 109 pin failing on re-vendor is the gate working, because it had been passing on a stale copy of `shell.css`.
+
+The denominator moved again, from 139 to 143 at G-90, when the product shipped the top-bar menu and its popover chrome into `shell.css`: `topmenu`, `pop`, `pop-group`, `pop-item`. Four added, none removed, measured the same way. It moved for the same reason as last time and that reason is worth naming rather than repeating: `smartcity-dashboards` merged, this repo did not re-vendor, and the 139 pin went on passing against a stale copy while the coverage claim above read as complete. The detector that catches it is `vendor-parity` arm B, which byte-compares the vendored copies against a live checkout of the product, and it is UNRUN unless `SC_DASHBOARDS_DIR` is set. It runs in CI, and CI fails the job if the log says it did not.
+
+The comment-stripping half of the counting rule is load-bearing rather than decorative. Counting the same two stylesheets without stripping comments returns 150, and the seven extra tokens are `css`, `hidden`, `html`, `js`, `md`, `mjs` and `test`, every one of which appears only inside prose. A denominator of 150 would be a coverage target nothing could ever reach.
 
 Coverage is measured by rendering, not declared: `test/gate3-classes.test.mjs` renders every component through the gallery, parses the class attributes out of the output, and checks each token against the stylesheets. A separate test asserts every export appears in the gallery, so nothing can dodge the check by being unregistered.
 

@@ -295,6 +295,15 @@ const MUST_NOT_COMPILE = [
     id: "a finding with no basis line",
     body: '<Finding identifier="F-04" title="Occupant load exceeds the value the plan is designed to." />',
   },
+  /* G-90. The top-bar menu family carries one rule and one required label. */
+  {
+    id: "a popover entry greyed out with no stated reason",
+    body: '<PopItem disabled>Sign in</PopItem>',
+  },
+  {
+    id: "a popover the assistive layer cannot name",
+    body: '<Pop open>Notifications</Pop>',
+  },
 ];
 
 test("consumer: the compiler rejects every shape the design law forbids", () => {
@@ -306,7 +315,7 @@ test("consumer: the compiler rejects every shape the design law forbids", () => 
       file,
       [
         'import * as React from "react";',
-        'import { BasisLine, EnvBadge, Finding, MatrixRow, Metric, ModelCite, Panel, Pill, Prov, State, Text } from "@empressaio/smartcity-kit";',
+        'import { BasisLine, EnvBadge, Finding, MatrixRow, Metric, ModelCite, Panel, Pill, Pop, PopItem, Prov, State, Text } from "@empressaio/smartcity-kit";',
         `export const bad = ${c.body};`,
       ].join("\n"),
     );

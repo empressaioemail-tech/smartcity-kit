@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cx } from "./base";
-import type { AnchorBase, Base } from "./base";
+import type { AnchorBase, Base, ButtonBase } from "./base";
+import { Basis } from "./status";
 
 /* ------------------------------------------------------------------- frame */
 
@@ -91,6 +92,137 @@ export function ColStack({
     <div className={cx("colstack", rail && "rail")} {...rest}>
       {children}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------ top-bar menus */
+
+/*
+ * The top-bar menu family, shipped by the product at G-90.
+ *
+ * Four classes and they are the smallest set a dropdown needs: an anchor a
+ * panel can be positioned against, the panel, a group inside it, and a row.
+ * Everything else composes classes this package already wraps, and that is a
+ * fact about the stylesheet rather than a choice made here: shell.css says so
+ * in its own header, and .pop is only ever written .panel.pop.
+ *
+ * One rule travels with this family and it is the product's own. shell.css, at
+ * .pop-item[disabled]: "An unavailable entry reads as unavailable rather than
+ * merely unresponsive. Its reason is the .basis line its group carries, filled
+ * from the server." index.html, above the block: "a control that has not yet
+ * heard from the server must not look available." That is honest absence stated
+ * about a control instead of about a panel, and PopItem below holds it at the
+ * type.
+ */
+
+/**
+ * The anchor a top-bar dropdown is positioned against.
+ *
+ * It has no open state and no trigger slot, because the product's two shipped
+ * instances differ in what they wrap and agree only on the wrapping. A trigger
+ * prop would have made this a menu widget with an opinion about focus, keyboard
+ * handling and dismissal, none of which is a class this stylesheet ships, and a
+ * package that owns no styling should not grow behaviour it cannot express in
+ * the vocabulary it wraps.
+ */
+export function TopMenu({ children, ...rest }: Base<HTMLDivElement> & { children?: React.ReactNode }) {
+  return (
+    <div className="topmenu" {...rest}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The dropdown panel. Always a panel: the product writes `panel pop` on every
+ * instance and .pop declares no border, background or radius of its own, so a
+ * bare .pop would render as an unframed floating block. It is emitted as the
+ * pair rather than offered as a composition, because the pair is the shipped
+ * fact and the unpaired form is a bug waiting for a consumer to find.
+ *
+ * `label` is required. Both shipped instances carry role=group and an
+ * aria-label, and a popover the assistive layer cannot name is a panel that
+ * exists for sighted users only.
+ *
+ * `open` defaults to CLOSED, which is the quiet default the third law asks for
+ * and also the state the product ships in its static document. A panel that
+ * opened by omission would put the loudest thing on the page one forgotten prop
+ * away.
+ */
+export function Pop({
+  label,
+  open = false,
+  children,
+  ...rest
+}: Base<HTMLDivElement> & { label: string; open?: boolean; children?: React.ReactNode }) {
+  return (
+    <div className="panel pop" role="group" aria-label={label} hidden={!open} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A group of entries inside a popover.
+ *
+ * `basis` is the group's own reason line and it is optional, because the product
+ * ships the reason in two places and both are real: three of the five shipped
+ * groups carry one trailing basis for the whole group, and two carry a basis per
+ * entry. Requiring it here would have made the per-entry form unrepresentable
+ * and forced a second basis nobody asked for onto every group that already
+ * states its reasons row by row. The requirement lives on PopItem instead, where
+ * it is a rule about a control rather than a rule about a container.
+ */
+export function PopGroup({
+  basis,
+  children,
+  ...rest
+}: Base<HTMLDivElement> & { basis?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <div className="pop-group" {...rest}>
+      {children}
+      {basis === undefined ? null : <Basis>{basis}</Basis>}
+    </div>
+  );
+}
+
+/**
+ * One entry in a popover, and THERE IS NO `disabled` PROP.
+ *
+ * That absence is the enforcement mechanism. `disabled` is removed from the prop
+ * bag, so the only way to render an unavailable entry is `unavailable`, and
+ * `unavailable` IS the reason: it is the basis text, not a flag. An entry cannot
+ * be greyed out without saying why, because there is no prop that greys it out.
+ *
+ * The rule is the product's, quoted in the family header above, and every one of
+ * the seven entries smartcity-dashboards ships today is unavailable with a
+ * stated basis. The failure this closes is the one the product's own comment
+ * names: an entry that is merely unresponsive, which reads as a broken button
+ * rather than as a capability the server has not confirmed.
+ *
+ * `test/law.test.mjs` asserts the removal is still in this source and
+ * `test/consumer.test.mjs` watches the compiler reject `disabled` on the
+ * offending line, so the rule survives an edit that only looks harmless.
+ */
+export function PopItem({
+  unavailable,
+  children,
+  ...rest
+}: Omit<ButtonBase, "disabled"> & { unavailable?: React.ReactNode; children?: React.ReactNode }) {
+  if (unavailable === undefined) {
+    return (
+      <button type="button" className="pop-item" {...rest}>
+        {children}
+      </button>
+    );
+  }
+  return (
+    <>
+      <button type="button" className="pop-item" disabled {...rest}>
+        {children}
+      </button>
+      <Basis>{unavailable}</Basis>
+    </>
   );
 }
 
