@@ -55,7 +55,7 @@ const SKIP_DIRS = new Set(["node_modules", ".git", "out"]);
  * only one of the two environments can ever see. Divergence between a local run
  * and CI is the failure this program keeps paying for.
  *
- * Scanned now, and each one ships: conventions.md (into the README), the 73
+ * Scanned now, and each one ships: conventions.md (into the README), the
  * previews (into the preview cards), config.json, NOTES.md.
  */
 const TOOL_OUTPUT_PATHS = new Set([

@@ -77,7 +77,7 @@ test("the repo-wide scans state what they refused to walk", () => {
    * The regression this row exists to prevent, stated as an assertion rather
    * than trusted to the shape of a Set. `.design-sync` as a whole must NEVER be
    * skipped again: it holds conventions.md, which ships verbatim inside the
-   * uploaded README, and the 73 previews, which ship as the preview cards. It
+   * uploaded README, and the previews, which ship as the preview cards. It
    * was skipped whole, and a real vendor-brand violation sat there with CI
    * green.
    */

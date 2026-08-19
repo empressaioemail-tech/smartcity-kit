@@ -32,8 +32,10 @@ Triaged as legitimate. A warn NOT in this list is new — look at it before reco
 - **`dist/` is gitignored and the converter reads it.** A re-sync that skips `npm run build` converts a stale or absent dist. Always rebuild.
 - **The vendored stylesheets can drift from upstream.** `test/vendor-parity.test.mjs` arm B only runs when `SC_DASHBOARDS_DIR` points at a `smartcity-dashboards` checkout; locally it declares itself unrun and CI sets it. If the product's CSS changes, the kit needs `npm run refresh:vendor` and a re-sync, or the synced design system silently lags the product.
 - **The font weight set is derived from the product**, parsed out of the font-host URL in `vendor/index.html`. If the product changes the weights it loads, the kit's gate fails until the fonts are refetched. That is intended.
-- **Preview compositions come from `examples/gallery.tsx`**, which is maintained in the kit and covers all 82 components with real fixture data. If a component's API changes, its GALLERY entry is the thing to update first — the previews port from it.
+- **Preview compositions come from `examples/gallery.tsx`**, which is maintained in the kit and covers all 86 components with real fixture data. If a component's API changes, its GALLERY entry is the thing to update first — the previews port from it.
 - **RESOLVED at G-88.** Two of the five components `30b` section 3.1 calls load-bearing — the applicability matrix (`mx*`) and the code citation (`cite`) — had no CSS in any shipped stylesheet, so the kit could not wrap them and the design agent would have invented them. The product shipped all four families into `shell.css` at G-88 item 2, the kit re-vendored and wrapped them at item 5, and the vocabulary went from 109 classes to 139. Plan Review is no longer the gap.
+- **G-90 added a fifth family: the top-bar menu and its popover chrome** (`topmenu`, `pop`, `pop-group`, `pop-item`), taking the vocabulary from 139 to 143 and the component count from 82 to 86. It carries one rule the design agent has to know: an unavailable entry states why, and there is no `disabled` prop to grey one out silently. `TopMenu`, `Pop`, `PopGroup` and `PopItem` are in `src/shell.tsx`.
+- **Two component counts in this file disagreed and both were stale** — one said 82 and one said 73 — which is the drift this whole re-sync section exists to warn about, sitting inside the warning. Both now read 86, which is `Object.keys(dist/index.mjs)` filtered to functions, `GALLERY.length`, and `ls .design-sync/previews | wc -l`, all three measured and all three agreeing.
 
 ## The dark-theme trap — do not set cfg.provider to Theme
 
@@ -61,7 +63,7 @@ card is showing.
 ## Preview authoring
 
 Compositions come from `examples/gallery.tsx` in this repo: one `GALLERY` entry per
-component, all 73, each with `covers` (the classes it exercises), `from` (which shipped
+component, all 86, each with `covers` (the classes it exercises), `from` (which shipped
 screen it was taken from) and a real `node`. Porting an entry into
 `.design-sync/previews/<Name>.tsx` means splitting its JSX into named exports, one per
 card cell. Keep the fixture content — it comes from the product's own fixture pack and is

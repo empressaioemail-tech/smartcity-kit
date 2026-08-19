@@ -36,6 +36,8 @@ Resting panels are `.panel`: `--sc-surface`, 1px `--sc-line`, `--sc-r` 6px, no s
 
 `.shell` / `.shell-top` / `.shell-body` / `.shell-nav` / `.shell-main` / `.shell-regions`. Top bar is 52px and carries city (`.seal` `.brandcity`), environment (`.env`), search, who you are. It is not navigation. Sidebar is `.shell-nav` with `.navgroup` / `.navitem` / `.nav-foot`. Page header is `.pagehead`: `.crumb`, `.titlerow`, `.lede`, then `.metrics` with at most four `.metric` tiles. Work surface is `.shell-regions` (two columns) or `.shell-regions.solo`. Map and document sit in `.region` (`.region-bar`, `.region-canvas`, `.region-foot`), inside our border.
 
+Top-bar menus are `.topmenu`, and that class is only an anchor: it holds a `.btn.btn-ghost.btn-sm` trigger and a `.panel.pop` panel, and the panel is a panel, never a bare `.pop`. Inside, `.pop-group` separates groups and `.pop-item` is a row. Nothing here is a new frame, a new shadow or a new type step; the panel, the header, the reason line and the controls are all classes this stylesheet already has. **An entry that is unavailable states why.** Draw it greyed with a `.basis` line giving the reason, in its own row or once for the group, and never draw an entry that is simply unresponsive: a control that has not heard from the server is not a broken button, it is a capability nobody has confirmed yet, and the difference has to be legible. The component API has no way to grey one out without a reason, so a design that shows one cannot be built.
+
 ## Tables
 
 `.dt` is the queue. Fixed column order: mono identifier (`.id`), subject (`.subj`), stage, place, due, status pill. No zebra, no vertical grid, no per-cell fill. Row count belongs in a `.basis` under the table.

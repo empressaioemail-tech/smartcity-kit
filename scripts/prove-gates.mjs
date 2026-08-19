@@ -210,6 +210,46 @@ const CASES = [
     expect: "elevation props found",
   },
   {
+    /* G-90. The rule this family carries is that an unavailable entry states why,
+       and it is held by the ABSENCE of a disabled prop. An absence cannot be
+       watched by reading the clean tree, so the injection puts the escape hatch
+       back and watches the law test go red. The needle is a fragment of the
+       PRINTED REGEX that assertion carries, not the word "disabled", which
+       appears in that suite for a dozen unrelated reasons and would score any
+       other failure as this gate working. It is also not "Omit<" alone, because
+       the G-88 licensed-body law prints Omit<AnchorBase and the two would be
+       indistinguishable. */
+    gate: "law: no-reason-no-disabled",
+    what: "PopItem gets its disabled escape hatch back",
+    file: "src/shell.tsx",
+    mutate: (t) => t.replace('Omit<ButtonBase, "disabled"> & { unavailable?: React.ReactNode; children?: React.ReactNode }', "ButtonBase & { unavailable?: React.ReactNode; children?: React.ReactNode }"),
+    test: "test/law.test.mjs",
+    expect: "Omit<ButtonBase,",
+    rebuild: true,
+  },
+  {
+    /* And the other half of the same law: the rendered output. A source-only
+       check passes on a component that keeps the Omit and stops emitting the
+       basis line, which would be the rule intact in the types and gone from the
+       page. */
+    gate: "law: no-reason-no-disabled",
+    what: "an unavailable PopItem stops rendering its basis line",
+    file: "src/shell.tsx",
+    mutate: (t) => t.replace("<Basis>{unavailable}</Basis>", ""),
+    test: "test/law.test.mjs",
+    expect: '<span class="basis">Basis: not read</span>',
+    rebuild: true,
+  },
+  {
+    gate: "law: closed by omission",
+    what: "Pop opens by default",
+    file: "src/shell.tsx",
+    mutate: (t) => t.replace("  open = false,", "  open = true,"),
+    test: "test/law.test.mjs",
+    expect: "open = false",
+    rebuild: true,
+  },
+  {
     gate: "markup parity",
     what: "a component adds a wrapper the product does not have",
     file: "src/status.tsx",
@@ -398,7 +438,7 @@ for (const [i, c] of CASES.entries()) {
     /**
      * G-87. `.design-sync` was not copied here, and that was invisible for as
      * long as nothing scanned it. It holds authored source that SHIPS —
-     * conventions.md travels verbatim into the uploaded README, the 73 previews
+     * conventions.md travels verbatim into the uploaded README, the previews
      * become the preview cards — so a violation planted there could not fire
      * against a scratch that did not contain the directory, and a case that
      * cannot fire is indistinguishable from a gate that does not work.

@@ -54,6 +54,9 @@ import {
   PanelBody,
   PanelHead,
   Pill,
+  Pop,
+  PopGroup,
+  PopItem,
   Prov,
   RegisterGroup,
   Region,
@@ -81,6 +84,7 @@ import {
   Text,
   Theme,
   TitleRow,
+  TopMenu,
   UnverifiedSource,
 } from "../dist/index.mjs";
 import {
@@ -126,6 +130,13 @@ const searchIcon = (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
     <circle cx="7" cy="7" r="4.5" />
     <path d="M10.5 10.5L14 14" />
+  </svg>
+);
+
+const bellIcon = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+    <path d="M4 6.6a4 4 0 018 0c0 3 1 3.9 1 3.9H3s1-.9 1-3.9z" />
+    <path d="M6.6 12.8a1.6 1.6 0 002.8 0" />
   </svg>
 );
 
@@ -579,7 +590,12 @@ export const GALLERY: GalleryEntry[] = [
   },
   {
     component: "ShellTop",
-    covers: ["shell-top", "seal", "brandcity", "env", "demo", "grow", "searchwrap", "inp", "badge-off", "btn", "btn-ghost", "menu-btn", "cp-source", "cp-src-l"],
+    /* Grew at G-90 with the theme toggle and the two top-bar menus. The list is
+       what the composed bar RENDERS, which is why it now carries the popover
+       classes: the panels are composed closed and gate 3 parses class attributes
+       out of the markup, where a hidden element still has its classes. The
+       markup-parity comparison drops them, which is a different question. */
+    covers: ["badge-off", "basis", "brandcity", "btn", "btn-ghost", "btn-sm", "cp-source", "cp-src-l", "demo", "env", "flush", "grow", "inp", "menu-btn", "p-quiet", "panel", "panel-body", "panel-head", "pill", "pop", "pop-group", "pop-item", "seal", "searchwrap", "shell-top", "t", "t-caption", "topmenu"],
     from: "index.html, the top bar",
     node: <TopBar />,
   },
@@ -1175,6 +1191,69 @@ export const GALLERY: GalleryEntry[] = [
           <Prov source="Sheet C-101" detail="and C-201" />
           <Pill meaning="warn">Uncertain</Pill>
         </Finding>
+      </>
+    ),
+  },
+  /* -------------------------------------------- G-90, the top-bar menu family */
+  {
+    component: "TopMenu",
+    covers: ["btn", "btn-ghost", "btn-sm", "panel", "panel-head", "pop", "t", "topmenu"],
+    from: "index.html .shell-top .topmenu. The notifications menu, shipped closed, which is the state the product serves",
+    node: (
+      <TopMenu>
+        <Button kind="ghost" size="sm" aria-label="Notifications">
+          {bellIcon}
+        </Button>
+        <Pop label="Notifications">
+          <PanelHead title="Notifications" />
+        </Pop>
+      </TopMenu>
+    ),
+  },
+  {
+    component: "Pop",
+    covers: ["basis", "panel", "panel-body", "panel-head", "pop", "t", "t-caption"],
+    from: "index.html #notif-pop. Shown open here because a closed panel renders nothing to look at; the product ships it closed and app.js opens it",
+    node: (
+      <Pop label="Notifications" open>
+        <PanelHead title="Notifications" />
+        <PanelBody>
+          <Text as="p" step="caption">
+            No notifications.
+          </Text>
+          <Basis>not read</Basis>
+          <Text as="p" step="caption">
+            Counting rule: not read
+          </Text>
+        </PanelBody>
+      </Pop>
+    ),
+  },
+  {
+    component: "PopGroup",
+    covers: ["basis", "pop-group", "pop-item"],
+    from: "index.html #account-pop .pop-group. Both shipped forms: the reason stated once for the group, and the reason stated per entry",
+    node: (
+      <>
+        <PopGroup basis="not read">
+          <PopItem>My account</PopItem>
+          <PopItem>My profile</PopItem>
+        </PopGroup>
+        <PopGroup>
+          <PopItem unavailable="not read">Support</PopItem>
+          <PopItem unavailable="not read">Feedback</PopItem>
+        </PopGroup>
+      </>
+    ),
+  },
+  {
+    component: "PopItem",
+    covers: ["basis", "pop-item"],
+    from: "index.html .pop-item. All seven shipped entries are unavailable with a stated basis; the available form has no shipped instance yet and is drawn from the same rule read the other way",
+    node: (
+      <>
+        <PopItem>Sign in</PopItem>
+        <PopItem unavailable="not read">Sign out</PopItem>
       </>
     ),
   },
