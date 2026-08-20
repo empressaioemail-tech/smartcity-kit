@@ -1,5 +1,11 @@
 import { resolveStaffMapQuery } from "/staff-map.mjs";
-import { resolveStaffLensQuery } from "/staff-review.mjs";
+import {
+  LENS_LABELS,
+  TAB_LABELS,
+  WORK_LABELS,
+  resolveStaffLensQuery,
+  surfaceTitle,
+} from "/staff-review.mjs";
 import {
   THEME_STORAGE_KEY,
   nextTheme,
@@ -8,35 +14,19 @@ import {
   themeToggleTitle,
 } from "/theme.mjs";
 
-const LENS_LABELS = {
-  "city-manager": "Overview",
-  "development-services": "Development services",
-  finance: "Finance",
-  citizen: "Citizen",
-  "public-works": "Public works",
-  parks: "Parks",
-  police: "Police",
-  "fire-ems": "Fire and EMS",
-  fleet: "Fleet",
-};
+/*
+  G-95. The three label maps that used to live here now live in
+  src/staff-review.mjs, and they moved rather than being copied.
 
-const TAB_LABELS = {
-  pipeline: "Pipeline",
-  place: "Place",
-  review: "Review",
-  inspections: "Inspections",
-  "code-enforcement": "Code enforcement",
-  licenses: "Licenses",
-};
-
-const WORK_LABELS = {
-  files: "Files",
-  review: "Plan review",
-  records: "Records search",
-  assets: "Assets",
-  connections: "Connections",
-  people: "People and access",
-};
+  The document title has to name the surface (2.4.2), and three readers need
+  that name: this file, the inline head script in web/index.html, and the CI
+  accessibility gate. A fourth copy here would have made the chrome and the
+  title able to disagree about what a surface is called - the crumb saying
+  Licenses while the title said Development services - which is the CTRL-1
+  shape this repo has already paid for. The head script's copy is forced (an
+  importing script is a module, a module is deferred, and that is the G-89
+  defect) and src/first-paint.test.mjs holds it equal.
+*/
 
 function setText(id, value) {
   const el = document.getElementById(id);
@@ -89,6 +79,11 @@ function currentPackName() {
 
 /** The view label applyLens resolved, so the scope line can be re-rendered. */
 let viewLabel = "";
+/** The surface the screen is currently painting, kept so the document title can
+ *  be recomposed when the pack identity resolves. Initialised to the resolver's
+ *  own answer for this URL, so a title composed before applyLens has run names
+ *  the same surface the head script already stamped. */
+let currentSurface = resolveStaffLensQuery(window.location.search);
 
 function renderScope() {
   setText("cp-source-scope", `${currentPackName()} · ${viewLabel}`);
@@ -132,14 +127,28 @@ function applyIdentity(identity) {
   }
 
   /**
-   * The footer figure is about the pack being viewed, and its counting rule
-   * travels beside it. The register's product-wide figure stays on Connections.
+   * The footer figures are about the pack being viewed, and each counting rule
+   * travels beside its own figure. The register's product-wide figure stays on
+   * Connections.
+   *
+   * G-93: granted and demonstrated are separate claims and are rendered
+   * separately. Neither number is computed here - both arrive resolved from
+   * src/city-identity.mjs, so there is one implementation of each rule.
    */
   const sources = identity.sources || {};
   if (sources.label) setText("nav-sources", sources.label);
   if (sources.rule) setText("nav-sources-rule", sources.rule);
+  if (sources.demonstratedLabel) setText("nav-demonstrated", sources.demonstratedLabel);
+  if (sources.demonstratedRule) setText("nav-demonstrated-rule", sources.demonstratedRule);
 
-  if (identity.documentTitle) document.title = identity.documentTitle;
+  /**
+   * G-95, 2.4.2 Page Titled. The pack-level title is the TAIL, never the whole
+   * title: the surface name is what distinguishes twenty-three pages that all
+   * belong to one city, and it is stamped at first paint by the head script so
+   * it is never late. What arrives here is the city, which cannot be known
+   * before the pack reads and which this product does not assert unread.
+   */
+  if (identity.documentTitle) document.title = surfaceTitle(currentSurface, identity.documentTitle);
   renderScope();
 }
 
@@ -159,6 +168,7 @@ async function loadIdentity(cityKey) {
    */
   if (!identity) {
     setText("nav-sources-rule", `pack identity did not read for ${key || "the default pack"}`);
+    setText("nav-demonstrated-rule", `pack identity did not read for ${key || "the default pack"}`);
     return;
   }
   applyIdentity(identity);
@@ -574,22 +584,23 @@ const STAGE_LABELS = {
   issuance: "Issuance",
 };
 
-/**
- * The nav badge and the page-header chip are a paired control and a ui test
- * asserts they agree. Both read this one function, so they cannot diverge at
- * runtime the way two careful edits eventually would.
- */
-function packStateLabel(pipeline) {
-  return pipeline && pipeline.generated ? "Demo records" : "Empty";
-}
+/*
+G-100. Development services no longer carries its own state label.
 
-function applyPackState(pipeline) {
-  const label = packStateLabel(pipeline);
-  const chip = document.getElementById("ds-state-chip");
-  if (chip) chip.textContent = label;
-  const badge = document.querySelector('.navitem[data-lens="development-services"] .badge');
-  if (badge) badge.textContent = label;
-}
+packStateLabel and applyPackState were a second implementation of the rule
+sourcedLabel and applyLensState already carry for the other four lenses, and
+they were a WEAKER one: the label came off pipeline.generated, a boolean, so a
+pack that had not granted MyGov and a pack that generates nothing produced the
+same badge - the collapse the lens bodies had already been fixed to avoid. The
+compose has carried sourceStatus since G-91 and this path never read it.
+
+Both are deleted rather than kept in sync. renderPipeline resolves the same
+status the region renderer does and calls applyLensState with it, so the DS
+badge, its chip and its Overview register row are the same three renderings of
+one label that every other lens gets. src/public-safety-lenses.test.mjs holds
+sourcedLabel and applyLensState to one declaration each; this is what makes that
+count true across the whole product rather than across four fifths of it.
+*/
 
 function td(text, className) {
   const cell = document.createElement("td");
@@ -651,9 +662,9 @@ function renderPipeline(pipeline) {
   const caption = document.getElementById("ds-pipeline-caption");
   const basis = document.getElementById("ds-pipeline-basis");
   const emptyHead = document.getElementById("ds-pipeline-empty-head");
+  const emptyKicker = document.getElementById("ds-pipeline-empty-kicker");
   const emptyBasis = document.getElementById("ds-pipeline-empty-basis");
 
-  applyPackState(pipeline);
   renderPipelineMetrics(pipeline);
   /**
    * The Development services breadcrumb used to be written from here, which
@@ -662,11 +673,43 @@ function renderPipeline(pipeline) {
    * only writer, and a test asserts the two paths agree on displayName.
    */
 
-  const records = Array.isArray(pipeline.records) ? pipeline.records : [];
-  const statusLabels = {};
-  for (const metric of pipeline.metrics || []) {
-    statusLabels[metric.id] = { label: metric.label, severity: metric.severity };
+  /**
+   * G-97. The state sentence is written on EVERY render, not only when the
+   * queue is empty.
+   *
+   * The pipeline said one sentence for all four source states, so an ungranted
+   * region and a city that generates nothing read identically; the compose has
+   * carried sourceStatus since G-91 and nothing had ever read it. Writing it
+   * unconditionally also stops the hidden block keeping a stale claim: with
+   * records on screen the honest-empty text is not displayed, but it is still in
+   * the document, and "Pipeline unread" sitting under fourteen rendered cases is
+   * a sentence this pack has not earned.
+   */
+  const status = String(pipeline.sourceStatus || "did-not-read");
+  /** G-100. The badge, the chip and the register row, from the same status. */
+  applyLensState("ds-state-chip", "development-services", sourcedLabel([{ status }]));
+  if (emptyKicker) {
+    emptyKicker.textContent = REGION_KICKER[status] || REGION_KICKER["did-not-read"];
   }
+  if (emptyHead) emptyHead.textContent = regionHead(status, "Pipeline", pipeline.cityKey);
+  /** The absence carries the basis the pack itself stated. */
+  if (emptyBasis && pipeline.basis) emptyBasis.textContent = `Basis: ${pipeline.basis}`;
+
+  const records = Array.isArray(pipeline.records) ? pipeline.records : [];
+  /**
+   * G-97. ONE severity rendering across the product.
+   *
+   * G-97 R3 read the resolved flag the record contract has carried since G-77
+   * and rendered a resolved status quiet, which is the visual law's inverted
+   * applicability - a pass is quiet, and eight coloured pills for the rows that
+   * need nobody are the loudest thing on a page. It named the consequence in its
+   * own close: Development services still rendered ready-to-issue through p-ok,
+   * so one severity vocabulary had two renderings across two lenses. That is
+   * settled here by adopting the incumbent rather than left as a divergence for
+   * somebody to find. The pipeline carries its tiles at the top level, so the
+   * shared resolver is called with the shape it reads.
+   */
+  const statusLabels = statusLabelsFor({ extras: { metrics: pipeline.metrics } });
 
   if (records.length === 0) {
     show(empty, true);
@@ -675,11 +718,6 @@ function renderPipeline(pipeline) {
     show(mark, false);
     show(prov, false);
     if (caption) caption.textContent = "Cases in flight";
-    if (emptyHead) {
-      emptyHead.textContent = `No cases are in flight on ${pipeline.cityKey || "this pack"}.`;
-    }
-    /** The absence carries the basis the pack itself stated. */
-    if (emptyBasis && pipeline.basis) emptyBasis.textContent = `Basis: ${pipeline.basis}`;
     return;
   }
 
@@ -732,6 +770,389 @@ async function loadPipeline(cityKey) {
     return;
   }
   renderPipeline(data);
+}
+
+/* ---------------------------------------------- development services regions
+
+RULING 1 AT THE PIXEL, on the seam main already carries.
+
+This block originally shipped its own four-state map, its own region renderer
+and its own metric renderer. G-97 R3 merged first with an equivalent set, so
+this lane DELETED its copies rather than renaming around the collision: two
+implementations of one rule is the CTRL-1 shape and the two would have said
+different sentences for the same state on two lenses of one product
+(DEV_PROCESS 2.4). The incumbent on main wins and this lane adapts onto it, so
+REGION_KICKER, regionHead, unreadRegion, loadDomain, renderRegion,
+renderRegionMetrics, statusLabelsFor and fill above are the only implementation.
+
+What is genuinely this lens's own is below: the row for each record type, and
+the SECOND AXIS every Development services domain carries beside its queue -
+the paired result classes and the inspector load, the service level against the
+declared target and the daily slice, the escalation ladder in declared step
+order, the expiry bands. Each carries its own counting rule, and each states the
+absences the domain declared - the inspector held off an inspection, the
+assessed figure held off a case, the renewal charge held off a licence - in the
+domain's own words rather than in words written here.
+*/
+
+function extrasOf(payload) {
+  return payload && payload.extras && typeof payload.extras === "object" ? payload.extras : {};
+}
+
+function pillCell(label, severity) {
+  const cell = document.createElement("td");
+  const pill = document.createElement("span");
+  pill.className = `pill ${SEVERITY_PILL[severity] || "p-quiet"}`;
+  pill.textContent = label;
+  cell.append(pill);
+  return cell;
+}
+
+function dataCell(text) {
+  const cell = document.createElement("td");
+  const value = document.createElement("span");
+  value.className = "t-data";
+  value.textContent = text;
+  cell.append(value);
+  return cell;
+}
+
+/** A cell that carries an absence rather than a blank, in the record's own words. */
+function basisCell(text) {
+  const cell = document.createElement("td");
+  const note = document.createElement("span");
+  note.className = "t-caption";
+  note.textContent = text;
+  cell.append(note);
+  return cell;
+}
+
+function placeCell(record) {
+  return td(record.place && record.place.label ? record.place.label : "");
+}
+
+/**
+ * A stage id rendered for reading. DERIVED from the declared id rather than
+ * copied into a second vocabulary here: a display map for work-order stages
+ * would be a copy of WORK_ORDER_STAGE_VALUES that nothing keeps in step.
+ */
+function stageLabel(id) {
+  const value = String(id || "");
+  if (!value) return "";
+  const words = value.replace(/-/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * A register of a region's second axis.
+ *
+ * When the region has no source the register is EMPTIED and its basis line
+ * carries the pack's own sentence. An empty container plus a stated basis is an
+ * absence; an empty container alone is a blank, and a blank is what ruling 1
+ * exists to stop.
+ */
+function renderRegister(containerId, basisId, payload, buildRows, rule) {
+  const container = document.getElementById(containerId);
+  const basis = document.getElementById(basisId);
+  const ok = payload.status === "ok";
+  if (container) {
+    container.replaceChildren(
+      ...(ok ? buildRows(payload) : []).map((row) => {
+        const el = document.createElement("div");
+        el.className = "srcreg";
+        const rail = document.createElement("i");
+        rail.className = "rail";
+        const name = document.createElement("span");
+        name.className = "nm";
+        const title = document.createElement("b");
+        title.textContent = row.title;
+        name.append(title);
+        if (row.sub) {
+          const sub = document.createElement("span");
+          sub.textContent = row.sub;
+          name.append(sub);
+        }
+        const pill = document.createElement("span");
+        pill.className = `pill ${SEVERITY_PILL[row.severity] || "p-quiet"}`;
+        pill.textContent = String(row.value);
+        el.append(rail, name, pill);
+        return el;
+      }),
+    );
+  }
+  if (basis) basis.textContent = `Basis: ${ok ? rule(payload) : payload.basis}`;
+}
+
+/** A key-value block for a region's summary figures. Same absence discipline. */
+function renderKeyValues(containerId, basisId, payload, buildPairs, rule) {
+  const container = document.getElementById(containerId);
+  const basis = document.getElementById(basisId);
+  const ok = payload.status === "ok";
+  if (container) {
+    const children = [];
+    for (const [key, value] of ok ? buildPairs(payload) : []) {
+      const dt = document.createElement("dt");
+      dt.textContent = key;
+      const dd = document.createElement("dd");
+      dd.textContent = String(value);
+      children.push(dt, dd);
+    }
+    container.replaceChildren(...children);
+  }
+  if (basis) basis.textContent = `Basis: ${ok ? rule(payload) : payload.basis}`;
+}
+
+/** The first declared value of a field across a region's rows, or "". */
+function firstOf(list, field) {
+  const rows = Array.isArray(list) ? list : [];
+  for (const row of rows) if (row && row[field]) return row[field];
+  return "";
+}
+
+/* ---------------------------------------------------------- inspections */
+
+function inspectionRow(record, payload) {
+  const row = document.createElement("tr");
+  const results = {};
+  for (const result of extrasOf(payload).results || []) {
+    results[result.id] = { label: result.label, severity: result.severity };
+  }
+  const result = results[record.result] || { label: record.result, severity: "quiet" };
+  row.append(
+    td(record.recordId, "id"),
+    td(record.inspectionType, "subj"),
+    pillCell(result.label, result.severity),
+    placeCell(record),
+    /**
+     * An unscheduled inspection carries no day, so the cell carries the
+     * record's own scheduleBasis rather than a blank or an invented date.
+     */
+    record.dayLabel ? dataCell(record.dayLabel) : basisCell(record.scheduleBasis || ""),
+    statusCell(record, statusLabelsFor(payload)),
+  );
+  return row;
+}
+
+function renderInspections(payload) {
+  const ok = renderRegion("ds-insp", payload);
+  renderRegionMetrics(document.getElementById("ds-insp-metrics"), payload);
+  const records = ok && Array.isArray(payload.records) ? payload.records : [];
+  fill(document.getElementById("ds-insp-rows"), records.map((r) => inspectionRow(r, payload)));
+  renderRegister(
+    "ds-insp-results",
+    "ds-insp-results-basis",
+    payload,
+    (data) =>
+      (extrasOf(data).results || []).map((result) => ({
+        title: result.label,
+        sub: result.basis || "",
+        value: result.count,
+        severity: result.severity,
+      })),
+    (data) => firstOf(extrasOf(data).results, "countingRule") || data.basis,
+  );
+  renderRegister(
+    "ds-insp-load",
+    "ds-insp-load-basis",
+    payload,
+    (data) =>
+      (extrasOf(data).inspectorLoad || []).map((load) => ({
+        title: load.inspectorRef,
+        sub: `${load.openCount} open`,
+        value: load.inspectionCount,
+        severity: "quiet",
+      })),
+    /** The inspector absence travels here, in the domain's own words. */
+    (data) =>
+      [
+        firstOf(extrasOf(data).inspectorLoad, "countingRule"),
+        firstOf(extrasOf(data).inspectorLoad, "inspectorBasis"),
+      ]
+        .filter(Boolean)
+        .join(" | ") || data.basis,
+  );
+}
+
+/* --------------------------------------------------------- work orders */
+
+function workOrderRow(record, payload) {
+  const row = document.createElement("tr");
+  row.append(
+    td(record.recordId, "id"),
+    td(record.subject, "subj"),
+    td(stageLabel(record.stage)),
+    placeCell(record),
+    dueCell(record),
+    /** The target travels with the elapsed figure, so the number is readable. */
+    dataCell(`${record.slaElapsedHours} h of ${record.slaTargetHours} h`),
+    statusCell(record, statusLabelsFor(payload)),
+  );
+  return row;
+}
+
+function renderWorkOrders(payload) {
+  const ok = renderRegion("ds-wo", payload);
+  renderRegionMetrics(document.getElementById("ds-wo-metrics"), payload);
+  const records = ok && Array.isArray(payload.records) ? payload.records : [];
+  fill(document.getElementById("ds-wo-rows"), records.map((r) => workOrderRow(r, payload)));
+  renderKeyValues(
+    "ds-wo-sla",
+    "ds-wo-sla-basis",
+    payload,
+    (data) => {
+      const sla = extrasOf(data).sla || {};
+      return [
+        ["Target", `${sla.targetHours} hours`],
+        ["Breached", sla.breached],
+        ["At risk", sla.atRisk],
+        ["Within", sla.within],
+        ["Measured", sla.measured],
+      ];
+    },
+    (data) => (extrasOf(data).sla || {}).countingRule || data.basis,
+  );
+  renderRegister(
+    "ds-wo-daily",
+    "ds-wo-daily-basis",
+    payload,
+    (data) =>
+      (extrasOf(data).dailyQueue || []).map((day) => ({
+        title: day.dayLabel,
+        sub: "",
+        value: day.count,
+        severity: "quiet",
+      })),
+    (data) => firstOf(extrasOf(data).dailyQueue, "countingRule") || data.basis,
+  );
+}
+
+/* ---------------------------------------------------- code enforcement */
+
+function codeViolationRow(record, payload) {
+  const row = document.createElement("tr");
+  const rungs = {};
+  for (const rung of extrasOf(payload).escalation || []) {
+    rungs[rung.id] = { label: rung.label, severity: rung.severity };
+  }
+  const rung = rungs[record.escalation] || { label: record.escalation, severity: "quiet" };
+  row.append(
+    td(record.recordId, "id"),
+    td(record.violationType, "subj"),
+    pillCell(rung.label, rung.severity),
+    dataCell(String(record.escalationStep)),
+    placeCell(record),
+    dueCell(record),
+    statusCell(record, statusLabelsFor(payload)),
+  );
+  return row;
+}
+
+function renderCodeEnforcement(payload) {
+  const ok = renderRegion("ds-ce", payload);
+  renderRegionMetrics(document.getElementById("ds-ce-metrics"), payload);
+  const records = ok && Array.isArray(payload.records) ? payload.records : [];
+  fill(document.getElementById("ds-ce-rows"), records.map((r) => codeViolationRow(r, payload)));
+  renderRegister(
+    "ds-ce-ladder",
+    "ds-ce-ladder-basis",
+    payload,
+    (data) =>
+      (extrasOf(data).escalation || []).map((rung) => ({
+        title: rung.label,
+        /** The step is DATA on the rung, so the order is visible rather than
+         *  implied by the position of the row. */
+        sub: `Step ${rung.step}`,
+        value: rung.count,
+        severity: rung.severity,
+      })),
+    (data) => firstOf(extrasOf(data).escalation, "countingRule") || data.basis,
+  );
+  renderKeyValues(
+    "ds-ce-stats",
+    "ds-ce-stats-basis",
+    payload,
+    (data) => {
+      const figures = extrasOf(data).stats || {};
+      return [
+        ["Open", figures.open],
+        ["Closed", figures.closed],
+        ["Measured", figures.measured],
+        /** The assessed figure this product has not read, stated rather than blank. */
+        ["Penalty", figures.penaltyBasis],
+      ];
+    },
+    (data) => (extrasOf(data).stats || {}).countingRule || data.basis,
+  );
+}
+
+/* ------------------------------------------------------------ licences */
+
+function licenceRow(record, payload) {
+  const row = document.createElement("tr");
+  row.append(
+    td(record.recordId, "id"),
+    td(record.licenseCategory, "subj"),
+    dataCell(record.holderRef),
+    placeCell(record),
+    dataCell(record.expiryLabel),
+    statusCell(record, statusLabelsFor(payload)),
+  );
+  return row;
+}
+
+/** An expiry band's bounds, read off the payload. Null is open-ended. */
+function bandBounds(band) {
+  if (band.from === null || band.from === undefined) return `up to ${band.to} days`;
+  if (band.to === null || band.to === undefined) return `${band.from} days and beyond`;
+  return `${band.from} to ${band.to} days`;
+}
+
+function renderLicences(payload) {
+  const ok = renderRegion("ds-lic", payload);
+  renderRegionMetrics(document.getElementById("ds-lic-metrics"), payload);
+  const records = ok && Array.isArray(payload.records) ? payload.records : [];
+  fill(document.getElementById("ds-lic-rows"), records.map((r) => licenceRow(r, payload)));
+  renderRegister(
+    "ds-lic-expiry",
+    "ds-lic-expiry-basis",
+    payload,
+    (data) =>
+      (extrasOf(data).expiry || []).map((band) => ({
+        title: band.label,
+        sub: bandBounds(band),
+        value: band.count,
+        severity: band.severity,
+      })),
+    /** The holder and the renewal charge this product has not read, both in the
+     *  domain's own words, joined rather than rewritten. */
+    (data) =>
+      [
+        firstOf(extrasOf(data).expiry, "countingRule"),
+        extrasOf(data).chargesBasis,
+        firstOf(data.records, "holderBasis"),
+      ]
+        .filter(Boolean)
+        .join(" | ") || data.basis,
+  );
+}
+
+/**
+ * The lens. Four regions off the route the product already serves, in parallel.
+ * A read that did not answer becomes did-not-read WITH a basis rather than an
+ * empty city, which is the same determination every other region on this
+ * product makes.
+ */
+async function loadDevelopmentServices(cityKey) {
+  const [inspections, workOrders, codeViolations, licences] = await Promise.all([
+    loadDomain("inspections", cityKey),
+    loadDomain("work-orders", cityKey),
+    loadDomain("code-violations", cityKey),
+    loadDomain("business-licenses", cityKey),
+  ]);
+  renderInspections(inspections || unreadRegion("Inspections", cityKey));
+  renderWorkOrders(workOrders || unreadRegion("Work orders", cityKey));
+  renderCodeEnforcement(codeViolations || unreadRegion("Code enforcement", cityKey));
+  renderLicences(licences || unreadRegion("Licenses", cityKey));
 }
 
 /* ---------------------------------------------------------------- routing */
@@ -790,6 +1211,12 @@ function applyLens(staffLens) {
    * because its section carries .sc-light, which is the kit's scoped mechanism.
    * Flipping documentElement dragged the staff chrome light on a lens change.
    */
+  /**
+   * The resolved surface is kept so the title can be recomposed when the pack
+   * resolves. Read from the same model that painted the screen, so the title
+   * cannot name a surface other than the one showing.
+   */
+  currentSurface = staffLens;
   const label = workOn ? WORK_LABELS[work] || work : LENS_LABELS[lens] || lens;
   viewLabel = label;
   renderScope();
@@ -1169,6 +1596,675 @@ function bindFeedback() {
   });
 }
 
+/* ------------------------------------------- G-97 Fleet and Public works
+
+Three registered domains reach a pixel here for the first time. Everything
+below READS the seam this product already serves at /api/domains/<id>; nothing
+below generates, seeds, fetches a vendor, or invents a shape the generator does
+not return. A second data path would be the defect, not the feature.
+
+THE FOUR SOURCE STATES ARE FOUR SENTENCES, and that is the whole point of this
+block. src/fixture-seam.mjs has distinguished ok, granted-empty, ungranted and
+no-fixture-source since G-91, and until now no customer could see the
+difference, because no lens rendered any of them. Collapsing ungranted into
+granted-empty re-creates the exact defect ruling 1 exists to close: "this city
+has not granted the source" and "the source is granted and returned nothing"
+are different sentences to a city, and a single "empty" says neither.
+
+So each state gets its own KICKER and its own HEAD, and the BASIS is always the
+payload's own words rather than a sentence composed here. A fifth branch,
+did-not-read, follows the pipeline precedent: a failed read is not an empty
+city, and an empty result is not an absence.
+
+ONE RENDERER, THREE REGIONS. The region identity is a prefix parameter rather
+than three copies of one rule (DEV_PROCESS 2.4), and the addressability gate
+resolves getElementById(`${prefix}-<slot>`) as the cross product of the three
+call-site literals with the nine slots. The cross product IS the required id
+set, so a slot missing on one region fails the gate by name.
+*/
+
+const REGION_KICKER = {
+  ok: "Records generated",
+  ungranted: "No source",
+  "granted-empty": "Source returned nothing",
+  "no-fixture-source": "Not generating",
+  "did-not-read": "Region did not read",
+};
+
+/** The tile note per state. A tile with no source says which absence it is. */
+const REGION_TILE_NOTE = {
+  ungranted: "No source granted",
+  "granted-empty": "Source returned nothing",
+  "no-fixture-source": "Pack generates nothing",
+  "did-not-read": "Region did not read",
+};
+
+/**
+ * The head sentence per state. Every value in it comes off the payload, so this
+ * function names no vendor, no city and no freshness of its own.
+ */
+function regionHead(status, region, cityKey) {
+  const name = region || "this";
+  const pack = cityKey || "this pack";
+  if (status === "ungranted") return `No source is granted for the ${name} region on ${pack}.`;
+  if (status === "granted-empty") {
+    return `The source for ${name} is granted on ${pack} and returned no records.`;
+  }
+  if (status === "no-fixture-source") {
+    return `${pack} generates no records, so the ${name} region has nothing to show.`;
+  }
+  if (status === "did-not-read") return `The ${name} region did not read on ${pack}.`;
+  return `The ${name} region is generating records on ${pack}.`;
+}
+
+/** A read that failed. Stated as its own determination, never as an empty city. */
+function unreadRegion(region, cityKey) {
+  const pack = String(cityKey || "").trim();
+  return {
+    status: "did-not-read",
+    region,
+    cityKey: pack,
+    recordType: "",
+    recordCount: 0,
+    countingRule: "",
+    basis: `the ${region} region did not read for ${pack}`,
+    records: [],
+    extras: {},
+  };
+}
+
+/**
+ * THE SEAM READER. One registered domain, for one pack, off the route the
+ * product already serves. A non-ok response resolves to null and the caller
+ * turns that into did-not-read with a basis.
+ */
+async function loadDomain(domainId, cityKey) {
+  const key = String(cityKey || "").trim();
+  try {
+    const res = await fetch(
+      `/api/domains/${encodeURIComponent(domainId)}?cityKey=${encodeURIComponent(key)}`,
+    );
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The four-state renderer. Returns whether the region is carrying records. */
+function renderRegion(prefix, payload) {
+  const mark = document.getElementById(`${prefix}-mark`);
+  const prov = document.getElementById(`${prefix}-prov`);
+  const caption = document.getElementById(`${prefix}-caption`);
+  const state = document.getElementById(`${prefix}-state`);
+  const kicker = document.getElementById(`${prefix}-kicker`);
+  const head = document.getElementById(`${prefix}-head`);
+  const basis = document.getElementById(`${prefix}-basis`);
+  const records = document.getElementById(`${prefix}-records`);
+  const recordsBasis = document.getElementById(`${prefix}-recordsbasis`);
+
+  const status = String(payload.status || "did-not-read");
+  const ok = status === "ok";
+  show(mark, ok);
+  show(prov, ok);
+  show(records, ok);
+  show(state, !ok);
+
+  if (caption) {
+    caption.textContent = ok
+      ? `${payload.recordCount} ${payload.recordType} records`
+      : "Not read";
+  }
+  if (kicker) kicker.textContent = REGION_KICKER[status] || REGION_KICKER["did-not-read"];
+  if (head) head.textContent = regionHead(status, payload.region, payload.cityKey);
+
+  /** The absence carries the basis the SEAM stated, never one written here. */
+  const line = payload.basis
+    ? `Basis: ${payload.basis}`
+    : "Basis: no region payload has been read for this pack";
+  if (basis) basis.textContent = line;
+  /** A count travels with its counting rule, next to the count. */
+  if (recordsBasis) {
+    recordsBasis.textContent = ok ? `${line}. Counting rule: ${payload.countingRule}` : line;
+  }
+  return ok;
+}
+
+/**
+ * The status tiles for a region. A tile with no records keeps saying Not read
+ * and never shows a zero, because a zero here would be a claim the city has not
+ * made. Every value that does render carries its denominator.
+ */
+function renderRegionMetrics(strip, payload) {
+  if (!strip) return;
+  const ok = payload.status === "ok";
+  const extras = payload.extras || {};
+  const metrics = ok && Array.isArray(extras.metrics) ? extras.metrics : [];
+  const byId = {};
+  for (const metric of metrics) byId[metric.id] = metric;
+  for (const tile of strip.querySelectorAll(".metric")) {
+    const metric = byId[tile.dataset.metric];
+    const value = tile.querySelector(".v");
+    const note = tile.querySelector(".n");
+    if (!metric) {
+      tile.classList.remove("has-value");
+      if (value) {
+        value.classList.add("word");
+        value.textContent = "Not read";
+      }
+      if (note) note.textContent = REGION_TILE_NOTE[payload.status] || "Not read";
+      continue;
+    }
+    tile.classList.add("has-value");
+    if (value) {
+      value.classList.remove("word");
+      value.textContent = String(metric.count);
+    }
+    if (note) note.textContent = `of ${payload.recordCount} generated ${payload.recordType} records`;
+  }
+}
+
+/**
+ * The severity vocabulary a region's own tiles declare, turned into the carrier
+ * its status cells use.
+ *
+ * A RESOLVED STATUS RENDERS QUIET, and this is the visual law rather than a
+ * preference: quiet surfaces, loud exceptions, and applicability is inverted so
+ * that a pass is quiet. On a roster where eight of fourteen vehicles are in
+ * service, eight coloured pills are the loudest thing on the page and they are
+ * the rows that need nobody. The record contract has carried a resolved flag
+ * on every status vocabulary since G-77 and no renderer had ever read it; this
+ * is the first one that does.
+ *
+ * IT ALSO AVOIDED A MEASURED KIT DEFECT, WHICH IS NOW FIXED, and the retired
+ * reason is recorded rather than deleted so that nobody re-derives it. When this
+ * rule was written, --sc-ok #2F7A52 on --sc-ok-wash #E3F0E8 was 4.44:1 in the
+ * light theme against 12px/500 text needing 4.5:1 - 0.06 short - and the token
+ * lived in web/sc-kit.css, byte-identical across three repos, so no Dashboards
+ * PR could touch it. G-98 fixed it as a product-line change: the light token is
+ * #2E7750, a computed 4.623:1, landed as identical bytes in smartcity-dashboards,
+ * smart-files, plan-review and the kit's vendored copy. The dark pair never
+ * failed (#55BE86 composites to 6.171:1 as rendered) and did not move.
+ *
+ * SO THIS RULE NOW RESTS ON THE VISUAL LAW ALONE. The two reasons were always
+ * separate and only one has expired; the rendering rule and the token fix are
+ * INDEPENDENT and must not be read as coupled. src/render-lenses.test.mjs
+ * computes the ratio live and now asserts the floor is MET, so a kit regression
+ * turns the suite red from the other direction.
+ *
+ * ONE AXIS IS STILL UNSETTLED, and it is a different one rather than the same
+ * divergence. src/adapters.mjs INSPECTION_RESULT_VALUES declares `inspected`
+ * rather than `resolved`, so this function cannot see it and `passed` renders
+ * through p-ok while every resolved band renders quiet. G-98 routed that to the
+ * planner instead of settling it: `inspected` is also true for `failed` and
+ * `corrections`, so quieting on that flag would quiet a failed inspection, and
+ * the correct generalisation - one satisfied-band predicate across both
+ * vocabularies - is a rule change rather than a value change.
+ */
+function statusLabelsFor(payload) {
+  const out = {};
+  const extras = payload.extras || {};
+  for (const metric of Array.isArray(extras.metrics) ? extras.metrics : []) {
+    out[metric.id] = { label: metric.label, severity: metric.resolved ? "quiet" : metric.severity };
+  }
+  return out;
+}
+
+function fill(tbody, rows) {
+  if (tbody) tbody.replaceChildren(...rows);
+}
+
+/* ----------------------------------------------------------------- fleet */
+
+function renderFleet(payload) {
+  const ok = renderRegion("fleet-roster", payload);
+  renderRegionMetrics(document.getElementById("fleet-metrics"), payload);
+  const extras = payload.extras || {};
+  const records = ok && Array.isArray(payload.records) ? payload.records : [];
+  const labels = statusLabelsFor(payload);
+  fill(
+    document.getElementById("fleet-roster-rows"),
+    records.map((record) => {
+      const row = document.createElement("tr");
+      row.append(
+        td(record.recordId, "id"),
+        td(record.unitLabel, "subj"),
+        statusCell(record, labels),
+        td(record.operatorRef, "id"),
+        td(record.odometerBand),
+      );
+      return row;
+    }),
+  );
+  const operators = ok && Array.isArray(extras.operators) ? extras.operators : [];
+  fill(
+    document.getElementById("fleet-operator-rows"),
+    operators.map((operator) => {
+      const row = document.createElement("tr");
+      row.append(td(operator.operatorRef, "id"), td(String(operator.vehicleCount)));
+      return row;
+    }),
+  );
+  /**
+   * A VEHICLE IS NOT AN ASSET, said on the surface rather than only in the
+   * payload. G-24 stays at zero and this is the lens that would leak into it.
+   */
+  if (extras.inventoryBasis) setText("fleet-roster-inventory", `Basis: ${extras.inventoryBasis}`);
+  const operator = operators[0];
+  if (operator) {
+    setText("fleet-operator-basis", `Basis: ${operator.operatorBasis}`);
+    setText("fleet-operator-rule", operator.countingRule);
+  }
+}
+
+async function loadFleetLens(cityKey) {
+  const payload = (await loadDomain("fleet-vehicles", cityKey)) || unreadRegion("Vehicle roster", cityKey);
+  renderFleet(payload);
+  applyLensState("fleet-state-chip", "fleet", sourcedLabel([payload]));
+  setText("fleet-region-rule", sourcedRule([payload]));
+}
+
+/* ---------------------------------------------------------- public works */
+
+function renderCapitalProjects(payload) {
+  const ok = renderRegion("pw-cip", payload);
+  renderRegionMetrics(document.getElementById("pw-cip-metrics"), payload);
+  const extras = payload.extras || {};
+  const records = ok && Array.isArray(payload.records) ? payload.records : [];
+  const labels = statusLabelsFor(payload);
+  fill(
+    document.getElementById("pw-cip-rows"),
+    records.map((record) => {
+      const row = document.createElement("tr");
+      const place = record.place && record.place.label ? record.place.label : "";
+      row.append(
+        td(record.recordId, "id"),
+        td(record.subject, "subj"),
+        td(record.phase),
+        td(place),
+        td(record.scheduleLabel, "t-data"),
+        statusCell(record, labels),
+      );
+      return row;
+    }),
+  );
+  const phases = ok && Array.isArray(extras.phases) ? extras.phases : [];
+  fill(
+    document.getElementById("pw-cip-phase-rows"),
+    phases.map((phase) => {
+      const row = document.createElement("tr");
+      row.append(td(phase.phase, "subj"), td(String(phase.count)));
+      return row;
+    }),
+  );
+  const firstPhase = phases[0];
+  if (firstPhase) setText("pw-cip-phase-rule", firstPhase.countingRule);
+  /**
+   * Two MEASURED classes, printed as two. Neither is the remainder of the
+   * other, so the pair can be reconciled against the measured total rather than
+   * agreeing by construction.
+   */
+  const schedule = extras.schedule;
+  if (schedule) {
+    setText(
+      "pw-cip-schedule",
+      `Behind ${schedule.behind}, on or ahead ${schedule.onOrAhead}, measured ${schedule.measured}. Counting rule: ${schedule.countingRule}`,
+    );
+  }
+  /** No money on this register, and the refusal is stated rather than implied. */
+  if (extras.budgetBasis) setText("pw-cip-budget", `Basis: ${extras.budgetBasis}`);
+}
+
+/**
+ * Call analytics. AGGREGATE ONLY: the record IS a queue volume for one relative
+ * day, so there is no call row to render and nothing here builds one. No
+ * recording, no caller reference, no extension-to-person mapping - none of the
+ * three is in the payload and none is added.
+ */
+function renderCallAnalytics(payload) {
+  const ok = renderRegion("pw-calls", payload);
+  const extras = payload.extras || {};
+  const queues = ok && Array.isArray(extras.queues) ? extras.queues : [];
+  fill(
+    document.getElementById("pw-calls-queue-rows"),
+    queues.map((queue) => {
+      const row = document.createElement("tr");
+      row.append(
+        td(queue.queueRef, "id"),
+        td(String(queue.callsOffered)),
+        td(String(queue.callsAnswered)),
+        td(String(queue.callsAbandoned)),
+        td(String(queue.bucketCount)),
+      );
+      return row;
+    }),
+  );
+  const daily = ok && Array.isArray(extras.daily) ? extras.daily : [];
+  fill(
+    document.getElementById("pw-calls-day-rows"),
+    daily.map((day) => {
+      const row = document.createElement("tr");
+      row.append(
+        td(day.dayLabel, "subj"),
+        td(String(day.callsOffered)),
+        td(String(day.callsAnswered)),
+        td(String(day.callsAbandoned)),
+        td(String(day.bucketCount)),
+      );
+      return row;
+    }),
+  );
+  const firstQueue = queues[0];
+  if (firstQueue) setText("pw-calls-queue-rule", firstQueue.countingRule);
+  const firstDay = daily[0];
+  if (firstDay) setText("pw-calls-day-rule", firstDay.countingRule);
+  const totals = extras.totals;
+  if (totals) {
+    setText(
+      "pw-calls-totals",
+      `Offered ${totals.callsOffered}, answered ${totals.callsAnswered}, abandoned ${totals.callsAbandoned}, measured ${totals.measured}. Counting rule: ${totals.countingRule}`,
+    );
+  }
+  /** Excluded because it must not exist, not because nobody got to it. */
+  if (extras.excludedFamilies) setText("pw-calls-excluded", `Basis: ${extras.excludedFamilies}`);
+}
+
+async function loadPublicWorksLens(cityKey) {
+  const projects = (await loadDomain("cip-projects", cityKey)) || unreadRegion("Capital projects", cityKey);
+  const calls = (await loadDomain("call-analytics", cityKey)) || unreadRegion("Call analytics", cityKey);
+  renderCapitalProjects(projects);
+  renderCallAnalytics(calls);
+  const regions = [projects, calls];
+  applyLensState("pw-state-chip", "public-works", sourcedLabel(regions));
+  setText("pw-region-rule", sourcedRule(regions));
+}
+
+/* ------------------------------------------------------------ lens state
+
+G-100. THE BADGE IS DERIVED, BECAUSE A HAND-WRITTEN ONE GOES STALE.
+
+Five nav badges shipped the words "Not built" for lenses that render. The
+mistake was not the words. It was that a state claim about a lens was TYPED into
+web/index.html, where nothing connects it to the thing that decides it, so it
+stayed true for exactly as long as it took the next lane to ship a renderer.
+This repo has paid for the hand-declared shape twice already, and the fix is
+never a better literal.
+
+So the static markup carries the UNREAD FALLBACK and nothing else, and every
+state word on a lens is written from here, off the status the seam resolved.
+
+WHY FIVE WORDS AND NOT TWO. sourcedLabel used to answer ok or not-ok, which put
+ungranted, granted-empty and no-fixture-source behind one word - the exact
+collapse ruling 1 exists to close, re-created in the nav after the lens bodies
+had been fixed. A city whose Spireon grant is missing and a city that generates
+nothing are not in the same state and the nav must not say they are. The keys
+are the seam's own DOMAIN_STATUSES plus did-not-read, and src/lens-claims.test.mjs
+reads both sides so a state added to the seam and not to this map fails by name.
+*/
+
+/**
+ * One word per determination. Five determinations, five words, none shared.
+ * "Empty" is kept for no-fixture-source deliberately: that is the word the
+ * empty pack already renders, and a state that has not changed must not change
+ * its sentence just because the vocabulary around it grew.
+ */
+const LENS_BADGE = {
+  ok: "Demo records",
+  "granted-empty": "No records",
+  ungranted: "No source",
+  "no-fixture-source": "Empty",
+  "did-not-read": "Not read",
+};
+
+/**
+ * How a lens with more than one region resolves to one word.
+ *
+ * This is a ROLLUP and it is stated as one rather than left to be discovered.
+ * Police carries two regions on the shipped demo pack: cameras generate, and
+ * patrol is the deliberately ungranted exemplar. The lens badge says
+ * "Demo records" because the lens does render records - and the figure that
+ * says how many of its regions are sourced is sourcedRule, which the page
+ * header prints immediately beside the chip, while the ungranted region states
+ * its own absence in full on the region itself. The badge is a single word by
+ * the shape of the slot; the counting rule is never left to it.
+ *
+ * Order is DOMAIN_STATUSES order with did-not-read last, and the test holds it
+ * equal to the seam's array rather than to a copy written here.
+ */
+const LENS_BADGE_ORDER = ["ok", "granted-empty", "ungranted", "no-fixture-source", "did-not-read"];
+
+/** The one status a set of regions resolves to. */
+function lensStatus(regions) {
+  const present = new Set(regions.map((region) => String(region.status || "did-not-read")));
+  return LENS_BADGE_ORDER.find((status) => present.has(status)) || "did-not-read";
+}
+
+/** The lens label. Same vocabulary the pipeline already uses on the shell. */
+function sourcedLabel(regions) {
+  return LENS_BADGE[lensStatus(regions)] || LENS_BADGE["did-not-read"];
+}
+
+/** The figure, with its denominator and its counting rule at the point of use. */
+function sourcedRule(regions) {
+  const sourced = regions.filter((region) => region.status === "ok").length;
+  const noun = regions.length === 1 ? "region" : "regions";
+  return `${sourced} of ${regions.length} ${noun} sourced; a region is sourced when its kind is granted on this pack and it returned records`;
+}
+
+/**
+ * The page chip, the nav badge and the Overview register row are one paired
+ * control, so they read one function and cannot diverge at runtime the way
+ * three careful edits would.
+ *
+ * G-100 added the third rendering. The Overview register is the page that
+ * answers "every lens on the roster, and whether it read", and it was answering
+ * it from typed markup while two other renderings of the same fact were already
+ * derived - which is how it came to file four rendering lenses under a heading
+ * that said they were not built. A row that carries no data-lens-row is left
+ * exactly as the document wrote it, so this can only ever speak for a lens the
+ * registry knows about.
+ */
+function applyLensState(chipId, lensId, label) {
+  const chip = document.getElementById(chipId);
+  if (chip) chip.textContent = label;
+  const badge = document.querySelector(`.navitem[data-lens="${lensId}"] .badge`);
+  if (badge) badge.textContent = label;
+  const row = document.querySelector(`[data-lens-row="${lensId}"] .pill`);
+  if (row) row.textContent = label;
+}
+
+
+/* ------------------------------------------ G-97 Police and Fire and EMS
+
+Three more registered domains reach a pixel. Everything below READS the seam the
+product already serves at /api/domains/<id> and composes it with the SAME
+renderer G-97 R3 landed for Fleet and Public works: renderRegion, its kicker and
+head tables, renderRegionMetrics, statusLabelsFor, applyLensState, sourcedLabel
+and sourcedRule are reused rather than re-implemented.
+
+THAT REUSE IS THE POINT OF THIS BLOCK'S SHAPE, and it is a correction. This lane
+first shipped its own four-state resolver in a served src/ module, which was
+defensible while it was the only one; R3 merged first with the copy inline, and
+two implementations of one rule on one page is the CTRL-1 shape this program has
+paid for twice. Converging on the merged one costs this lane its Node-testable
+resolver and buys the product a single sentence per state across four lenses.
+The behavioural proof of all four states moves to the lane's rendered walk, which
+is where R3's proof already lives, and the close carries it.
+
+WHAT IS DIFFERENT HERE, and it is only the data. Police carries TWO regions, one
+of which is the single deliberately ungranted region in the product: spireon is
+kept off the demonstration axis on purpose, so patrol-vehicles renders BUILT and
+sourceless on the shipped demo pack. Fire and EMS carries one region with a
+station dimension. Nothing below invents a field the generators do not return:
+the camera domain carries no plate read, no person of interest and no counted
+occupancy, and the apparatus domain names no crew.
+*/
+
+/**
+ * The camera region. The site and occupancy dimensions are counted off the
+ * records by the generator and rendered as they arrive; occupancy is a BAND and
+ * one of the bands is "occupancy not measured", rendered as itself, because a
+ * camera that is not reporting has no occupancy and a zero there would be a
+ * count of people nobody took.
+ */
+function renderPoliceCameras(payload) {
+  const ok = renderRegion("police-cameras", payload);
+  renderRegionMetrics(document.getElementById("police-cameras-metrics"), payload);
+  const extras = payload.extras || {};
+  const records = ok && Array.isArray(payload.records) ? payload.records : [];
+  const labels = statusLabelsFor(payload);
+  fill(
+    document.getElementById("police-cameras-rows"),
+    records.map((record) => {
+      const row = document.createElement("tr");
+      row.append(
+        td(record.recordId, "id"),
+        statusCell(record, labels),
+        td(record.siteRef, "id"),
+        td(record.placement),
+        td(record.occupancyBand),
+      );
+      return row;
+    }),
+  );
+  const sites = ok && Array.isArray(extras.sites) ? extras.sites : [];
+  fill(
+    document.getElementById("police-cameras-site-rows"),
+    sites.map((site) => {
+      const row = document.createElement("tr");
+      row.append(td(site.siteRef, "id"), td(site.placement), td(String(site.cameraCount)));
+      return row;
+    }),
+  );
+  const occupancy = (ok && extras.occupancy) || {};
+  const bands = Array.isArray(occupancy.bands) ? occupancy.bands : [];
+  fill(
+    document.getElementById("police-cameras-occupancy-rows"),
+    bands.map((band) => {
+      const row = document.createElement("tr");
+      row.append(td(band.band, "subj"), td(String(band.count)));
+      return row;
+    }),
+  );
+  /** Every figure with its rule, at the point of use. */
+  setText(
+    "police-cameras-sites-rule",
+    sites.length ? sites[0].countingRule : "An opaque site reference, never an address",
+  );
+  setText(
+    "police-cameras-occupancy-basis",
+    occupancy.countingRule || "The occupancy dimension has not been read for this pack",
+  );
+  /**
+   * The privacy exclusion is a POSITIVE statement on the surface rather than a
+   * gap in it, and the words are the record contract's rather than this file's.
+   */
+  setText(
+    "police-cameras-privacy",
+    extras.excludedFamilies || "The excluded record families have not been read for this pack",
+  );
+  setText(
+    "police-cameras-inventory",
+    extras.inventoryBasis || "The inventory position has not been read for this pack",
+  );
+}
+
+/**
+ * The patrol roster, and it is the region this row exists to make visible. On
+ * the shipped demo pack it renders ungranted: BUILT, instrumented, and with no
+ * source, which is a different sentence from a region that does not exist and a
+ * different sentence again from a source that returned nothing.
+ */
+function renderPatrolRoster(payload) {
+  const ok = renderRegion("patrol-vehicles", payload);
+  renderRegionMetrics(document.getElementById("patrol-vehicles-metrics"), payload);
+  const records = ok && Array.isArray(payload.records) ? payload.records : [];
+  const labels = statusLabelsFor(payload);
+  fill(
+    document.getElementById("patrol-vehicles-rows"),
+    records.map((record) => {
+      const row = document.createElement("tr");
+      row.append(td(record.unitLabel, "subj"), statusCell(record, labels), td(record.operatorRef, "id"));
+      return row;
+    }),
+  );
+  setText(
+    "patrol-vehicles-operator",
+    (records[0] && records[0].operatorBasis) || "The operator reference has not been read for this pack",
+  );
+}
+
+async function loadPoliceLens(cityKey) {
+  const regions = await Promise.all([
+    loadDomain("police-cameras", cityKey),
+    loadDomain("patrol-vehicles", cityKey),
+  ]);
+  const cameras = regions[0] || unreadRegion("camera inventory", cityKey);
+  const patrol = regions[1] || unreadRegion("patrol roster", cityKey);
+  renderPoliceCameras(cameras);
+  renderPatrolRoster(patrol);
+  applyLensState("police-state-chip", "police", sourcedLabel([cameras, patrol]));
+  setText("police-region-rule", sourcedRule([cameras, patrol]));
+}
+
+/**
+ * The apparatus region. Readiness is counted PER STATION rather than city wide,
+ * because a city with every out of service truck in one station is a different
+ * fact from a city with one in each, and the rollup cannot say which.
+ */
+function renderFireApparatus(payload) {
+  const ok = renderRegion("fire-apparatus", payload);
+  renderRegionMetrics(document.getElementById("fire-apparatus-metrics"), payload);
+  const extras = payload.extras || {};
+  const records = ok && Array.isArray(payload.records) ? payload.records : [];
+  const labels = statusLabelsFor(payload);
+  fill(
+    document.getElementById("fire-apparatus-rows"),
+    records.map((record) => {
+      const row = document.createElement("tr");
+      row.append(
+        td(record.unitLabel, "subj"),
+        td(record.apparatusType),
+        statusCell(record, labels),
+        td(record.stationLabel),
+      );
+      return row;
+    }),
+  );
+  const stations = ok && Array.isArray(extras.stations) ? extras.stations : [];
+  fill(
+    document.getElementById("fire-apparatus-station-rows"),
+    stations.map((station) => {
+      const row = document.createElement("tr");
+      row.append(
+        td(station.stationLabel, "subj"),
+        td(String(station.apparatusCount)),
+        td(String(station.readyCount)),
+      );
+      return row;
+    }),
+  );
+  setText(
+    "fire-apparatus-stations-rule",
+    stations.length ? stations[0].countingRule : "Readiness per station, never a city-wide rollup",
+  );
+  setText(
+    "fire-apparatus-ready-rule",
+    extras.readyCountingRule || "The readiness counting rule has not been read for this pack",
+  );
+  /** A generated record names nobody, and says so rather than leaving a gap. */
+  setText(
+    "fire-apparatus-crew",
+    (stations[0] && stations[0].crewBasis) || "The crew position has not been read for this pack",
+  );
+}
+
+async function loadFireEmsLens(cityKey) {
+  const payload = (await loadDomain("fire-apparatus", cityKey)) || unreadRegion("apparatus", cityKey);
+  renderFireApparatus(payload);
+  applyLensState("fire-ems-state-chip", "fire-ems", sourcedLabel([payload]));
+  setText("fire-ems-region-rule", sourcedRule([payload]));
+}
+
 /* ------------------------------------------------------------------- boot */
 
 const staffLens = resolveStaffLensQuery(window.location.search);
@@ -1185,4 +2281,9 @@ loadShellState(staffMap.cityKey);
 loadIdentity(staffMap.cityKey);
 composeGoldMap(staffMap.parcelNodeId, staffMap.cityKey);
 loadPipeline(staffMap.cityKey);
+loadDevelopmentServices(staffMap.cityKey);
+loadFleetLens(staffMap.cityKey);
+loadPublicWorksLens(staffMap.cityKey);
+loadPoliceLens(staffMap.cityKey);
+loadFireEmsLens(staffMap.cityKey);
 if (resettle) resettle();

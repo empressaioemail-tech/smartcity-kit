@@ -49,8 +49,8 @@
         var DS_TABS = [
           "pipeline",
           "place",
-          "review",
           "inspections",
+          "work-orders",
           "code-enforcement",
           "licenses",
         ];
@@ -71,16 +71,80 @@
         */
         var work = pick(WORK, params.get("work"), "");
         var lens = pick(LENS, params.get("lens"), FALLBACK_LENS);
+        var tab = lens === "development-services" ? pick(DS_TABS, params.get("tab"), "pipeline") : "";
+        var atab = work === "assets" ? pick(ASSET_TABS, params.get("atab"), "inventory") : "";
         var root = document.documentElement;
         root.setAttribute("data-surface", work ? "work-" + work : "lens-" + lens);
-        root.setAttribute(
-          "data-tab",
-          lens === "development-services" ? pick(DS_TABS, params.get("tab"), "pipeline") : "",
-        );
-        root.setAttribute(
-          "data-atab",
-          work === "assets" ? pick(ASSET_TABS, params.get("atab"), "inventory") : "",
-        );
+        root.setAttribute("data-tab", tab);
+        root.setAttribute("data-atab", atab);
+        /*
+          G-95. 2.4.2 Page Titled, resolved here for the same reason the surface
+          and the theme are, and it is the one of the three that axe could never
+          have found.
+
+          Every nav item and every tab in this product is a real anchor with an
+          href, so each of the twenty-three surfaces IS a distinct page, and each
+          one owes the reader a title saying which. The product served one title
+          on all of them. axe scans a page at a time, a title was present on
+          every page it scanned, and its document-title rule passed everywhere -
+          the criterion fails only when the surfaces are compared, which no
+          single-page scan does.
+
+          Stamped BEFORE the parser reaches the body, because a title set after
+          the module loads is a title a screen reader announces wrong on arrival
+          and a bookmark records wrong. web/app.js appends the city once the pack
+          reads; the part that distinguishes the pages is here and is never late.
+
+          The four maps below are a SECOND implementation of one rule, forced by
+          the same constraint as the id lists above: an importing script is a
+          module and a module is deferred. src/first-paint.test.mjs is the
+          divergence test that holds them equal to src/staff-review.mjs, both
+          textually and by comparing the resolved title for every query.
+        */
+        var PRODUCT_TITLE = "SmartCity Dashboards";
+        var TITLE_SEP = " · ";
+        var LENS_LABELS = {
+          "city-manager": "Overview",
+          "development-services": "Development services",
+          finance: "Finance",
+          citizen: "Citizen",
+          "public-works": "Public works",
+          parks: "Parks",
+          police: "Police",
+          "fire-ems": "Fire and EMS",
+          fleet: "Fleet",
+        };
+        var TAB_LABELS = {
+          pipeline: "Pipeline",
+          place: "Place",
+          inspections: "Inspections",
+          "work-orders": "Work orders",
+          "code-enforcement": "Code enforcement",
+          licenses: "Licenses",
+        };
+        var WORK_LABELS = {
+          files: "Files",
+          review: "Plan review",
+          records: "Records search",
+          assets: "Assets",
+          connections: "Connections",
+          people: "People and access",
+        };
+        var ASSET_TAB_LABELS = {
+          inventory: "Inventory",
+          map: "Map",
+          fixture: "Demo fixture record",
+        };
+        var titleParts = [];
+        if (work) {
+          if (work === "assets" && atab) titleParts.push(ASSET_TAB_LABELS[atab]);
+          titleParts.push(WORK_LABELS[work] || work);
+        } else {
+          if (lens === "development-services" && tab) titleParts.push(TAB_LABELS[tab]);
+          titleParts.push(LENS_LABELS[lens] || lens);
+        }
+        titleParts.push(PRODUCT_TITLE);
+        document.title = titleParts.join(TITLE_SEP);
         /*
           G-90. Theme, resolved here for exactly the reason the surface is.
 
@@ -201,7 +265,7 @@
                   <div class="actionbar">
                     <button type="button" class="btn btn-primary btn-sm" id="feedback-send">Send</button>
                   </div>
-                  <span class="basis" id="feedback-result">Basis: nothing has been sent from this session</span>
+                  <span class="basis" id="feedback-result" aria-live="polite">Basis: nothing has been sent from this session</span>
                 </div>
                 <div class="pop-group">
                   <button type="button" class="pop-item" id="acct-signin" disabled>Sign in</button>
@@ -222,11 +286,11 @@
               <a class="navitem" data-lens="development-services" href="/?lens=development-services">Development services<span class="grow"></span><span class="badge">Empty</span></a>
               <a class="navitem" data-lens="finance" href="/?lens=finance">Finance<span class="grow"></span><span class="badge">Empty</span></a>
               <a class="navitem" data-lens="citizen" href="/?lens=citizen">Citizen<span class="grow"></span><span class="badge">Preview</span></a>
-              <a class="navitem roster" data-lens="public-works" href="/?lens=public-works">Public works<span class="grow"></span><span class="badge">Not built</span></a>
+              <a class="navitem" data-lens="public-works" href="/?lens=public-works">Public works<span class="grow"></span><span class="badge">Not read</span></a>
               <a class="navitem roster" data-lens="parks" href="/?lens=parks">Parks<span class="grow"></span><span class="badge">Not built</span></a>
-              <a class="navitem roster" data-lens="police" href="/?lens=police">Police<span class="grow"></span><span class="badge">Not built</span></a>
-              <a class="navitem roster" data-lens="fire-ems" href="/?lens=fire-ems">Fire and EMS<span class="grow"></span><span class="badge">Not built</span></a>
-              <a class="navitem roster" data-lens="fleet" href="/?lens=fleet">Fleet<span class="grow"></span><span class="badge">Not built</span></a>
+              <a class="navitem" data-lens="police" href="/?lens=police">Police<span class="grow"></span><span class="badge">Not read</span></a>
+              <a class="navitem" data-lens="fire-ems" href="/?lens=fire-ems">Fire and EMS<span class="grow"></span><span class="badge">Not read</span></a>
+              <a class="navitem" data-lens="fleet" href="/?lens=fleet">Fleet<span class="grow"></span><span class="badge">Not read</span></a>
             </div>
             <div class="navgroup">
               <div class="gl">Work</div>
@@ -241,7 +305,13 @@
               <a class="navitem roster" data-work="people" href="/?work=people">People and access<span class="grow"></span><span class="badge">Not built</span></a>
             </div>
             <div class="nav-foot">
-              <a class="prov" href="/?work=connections"><b id="nav-sources">Sources not read</b> <span class="sep">|</span> <span data-pack-key>this pack</span> <span id="nav-sources-rule">no grant count has been read for this pack</span></a>
+              <!-- G-93. TWO FIGURES, BECAUSE THEY ARE TWO CLAIMS. A granted
+                   source is connected; a demonstrated kind is generated fixture
+                   data that connects nothing. Both are per-pack, both are
+                   derived in src/city-identity.mjs packSources(), and each
+                   carries its own counting rule beside it. The strings below are
+                   the pre-resolution fallback, which names no pack. -->
+              <a class="prov" href="/?work=connections"><b id="nav-sources">Sources not read</b> <span class="sep">|</span> <b id="nav-demonstrated">Demonstration not read</b> <span class="sep">|</span> <span data-pack-key>this pack</span> <span id="nav-sources-rule">no grant count has been read for this pack</span> <span class="sep">|</span> <span id="nav-demonstrated-rule">no demonstration count has been read for this pack</span></a>
             </div>
           </nav>
 
@@ -256,7 +326,7 @@
                 <p class="lede">Where am I, what needs me, and what is missing. Nothing on this page is a count until a source reads.</p>
               </header>
               <div class="shell-regions">
-                <div class="colstack">
+                <div class="colstack" tabindex="0">
                   <div class="metrics" id="overview-metrics">
                     <div class="metric"><span class="k">Needs a decision</span><span class="v word">Not read</span><span class="n">No operations source</span></div>
                     <div class="metric"><span class="k">Overdue reviews</span><span class="v word">Not read</span><span class="n">Review mount is preview</span></div>
@@ -267,7 +337,7 @@
                     <div class="panel-head"><span class="t">What needs you today</span><span class="grow"></span><span class="t-caption">Decision queue</span></div>
                     <div class="state">
                       <span class="st-k">No live operations</span>
-                      <h5>No decisions are waiting on <span data-pack-key>this pack</span>.</h5>
+                      <h2>No decisions are waiting on <span data-pack-key>this pack</span>.</h2>
                       <p>This queue would list items that need a call across connected departments. No operations feed is granted on <span data-pack-key>this pack</span>, so there is nothing to resolve here.</p>
                       <span class="basis">Basis: no operations grant on cityKey <span data-pack-key>this pack</span>. Gold parcel 48021:34137 is a demo fixture, not a city onboarded.</span>
                     </div>
@@ -276,7 +346,7 @@
                     <div class="panel-head"><span class="t">Public meetings</span><span class="grow"></span><span class="prov"><b>City clerk calendar</b> <span class="sep">|</span> <span id="overview-meetings-conn">unread</span></span><span class="pill p-warn" id="overview-meetings-honesty" hidden style="display:none">Partial</span></div>
                     <div class="state" id="overview-meetings-state">
                       <span class="st-k">Calendar unread</span>
-                      <h5>No meeting packet has been read.</h5>
+                      <h2>No meeting packet has been read.</h2>
                       <p>Public meetings list files records from a clerk calendar grant. No clerk source is granted on <span data-pack-key>this pack</span>, so this panel stays empty rather than showing another city's sessions.</p>
                       <span class="basis" id="overview-meetings-basis">Basis: no clerk calendar grant has been read for this pack</span>
                     </div>
@@ -289,16 +359,16 @@
                       <div class="srcreg"><i class="rail"></i><span class="nm"><b>Development services</b><span>Permits, inspections, licenses</span></span><span class="pill p-quiet">Not connected</span></div>
                       <div class="srcreg"><i class="rail"></i><span class="nm"><b>Finance</b><span>Adopted budget and fund ledger</span></span><span class="pill p-quiet">Not connected</span></div>
                       <div class="srcreg"><i class="rail"></i><span class="nm"><b>Citizen</b><span>Public lens, no account required</span></span><span class="pill p-restricted">Preview</span></div>
+                      <div class="srcreg" data-lens-row="public-works"><i class="rail"></i><span class="nm"><b>Public works</b><span>CIP, projects, reporting, phones</span></span><span class="pill p-quiet">Not read</span></div>
+                      <div class="srcreg" data-lens-row="police"><i class="rail"></i><span class="nm"><b>Police</b><span>Patrol, cameras, incident log</span></span><span class="pill p-quiet">Not read</span></div>
+                      <div class="srcreg" data-lens-row="fire-ems"><i class="rail"></i><span class="nm"><b>Fire and EMS</b><span>Occupancies, dispatch, flood and weather</span></span><span class="pill p-quiet">Not read</span></div>
+                      <div class="srcreg" data-lens-row="fleet"><i class="rail"></i><span class="nm"><b>Fleet</b><span>Vehicles, drivers, utilisation, safety</span></span><span class="pill p-quiet">Not read</span></div>
                       <div class="reg-group">Work</div>
                       <div class="srcreg"><i class="rail"></i><span class="nm"><b>Plan review</b><span>Submittals against the adopted code</span></span><span class="pill p-restricted">Preview</span></div>
                       <div class="srcreg"><i class="rail"></i><span class="nm"><b>Files</b><span>The city private filing system</span></span><span class="pill p-restricted">Preview</span></div>
                       <div class="srcreg"><i class="rail"></i><span class="nm"><b>Records search</b><span>City document search</span></span><span class="pill p-quiet">Not built</span></div>
-                      <div class="reg-group">Roster, not yet built</div>
-                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Public works</b><span>CIP, projects, reporting, phones</span></span><span class="pill p-quiet">Not built</span></div>
-                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Parks</b><span>Department on the roster</span></span><span class="pill p-quiet">Not built</span></div>
-                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Police</b><span>Patrol, cameras, incident log</span></span><span class="pill p-quiet">Not built</span></div>
-                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Fire and EMS</b><span>Occupancies, dispatch, flood and weather</span></span><span class="pill p-quiet">Not built</span></div>
-                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Fleet</b><span>Vehicles, drivers, utilisation, safety</span></span><span class="pill p-quiet">Not built</span></div>
+                      <div class="reg-group">Not built</div>
+                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Parks</b><span>No vendor, so no region is registered</span></span><span class="pill p-quiet">Not built</span></div>
                       <div class="reg-group">City</div>
                       <div class="srcreg"><i class="rail"></i><span class="nm"><b>Assets</b><span>City-owned inventory</span></span><span class="pill p-quiet">Empty</span></div>
                       <div class="srcreg"><i class="rail"></i><span class="nm"><b>Connections</b><span>The function register</span></span><span class="pill p-restricted">Mounted</span></div>
@@ -306,7 +376,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="colstack rail">
+                <div class="colstack rail" tabindex="0">
                   <div class="region">
                     <div class="region-bar">
                       <span class="t">The city</span>
@@ -343,125 +413,305 @@
                   <h1>Development services</h1>
                   <span class="pill p-quiet" id="ds-state-chip">Empty</span>
                 </div>
+                <p class="lede">What the permitting system this city already runs is carrying. Every region below states whether it has a source, and says which of the four it is rather than going blank.</p>
               </header>
               <div class="tabs" role="tablist" aria-label="Development services">
                 <a role="tab" aria-selected="true" data-tab="pipeline" href="/?lens=development-services&amp;tab=pipeline">Pipeline</a>
                 <a role="tab" aria-selected="false" data-tab="place" href="/?lens=development-services&amp;tab=place">Place</a>
-                <a role="tab" aria-selected="false" data-tab="review" href="/?lens=development-services&amp;tab=review">Review</a>
                 <a role="tab" aria-selected="false" data-tab="inspections" href="/?lens=development-services&amp;tab=inspections">Inspections</a>
+                <a role="tab" aria-selected="false" data-tab="work-orders" href="/?lens=development-services&amp;tab=work-orders">Work orders</a>
                 <a role="tab" aria-selected="false" data-tab="code-enforcement" href="/?lens=development-services&amp;tab=code-enforcement">Code enforcement</a>
                 <a role="tab" aria-selected="false" data-tab="licenses" href="/?lens=development-services&amp;tab=licenses">Licenses</a>
               </div>
               <div class="ds-tab on" id="tab-pipeline">
                 <div class="shell-regions solo">
-                  <div class="colstack">
-                    <div class="metrics" id="ds-metrics">
-                      <div class="metric" data-metric="overdue"><span class="k">Overdue</span><span class="v word">Not read</span><span class="n">No permit source</span></div>
-                      <div class="metric" data-metric="in-review"><span class="k">In review</span><span class="v word">Not read</span><span class="n">No permit source</span></div>
-                      <div class="metric" data-metric="awaiting-applicant"><span class="k">Awaiting applicant</span><span class="v word">Not read</span><span class="n">No permit source</span></div>
-                      <div class="metric" data-metric="ready-to-issue"><span class="k">Ready to issue</span><span class="v word">Not read</span><span class="n">No permit source</span></div>
+                  <div class="colstack" tabindex="0">
+                  <div class="metrics" id="ds-metrics">
+                    <div class="metric" data-metric="overdue"><span class="k">Overdue</span><span class="v word">Not read</span><span class="n">No permit source</span></div>
+                    <div class="metric" data-metric="in-review"><span class="k">In review</span><span class="v word">Not read</span><span class="n">No permit source</span></div>
+                    <div class="metric" data-metric="awaiting-applicant"><span class="k">Awaiting applicant</span><span class="v word">Not read</span><span class="n">No permit source</span></div>
+                    <div class="metric" data-metric="ready-to-issue"><span class="k">Ready to issue</span><span class="v word">Not read</span><span class="n">No permit source</span></div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Pipeline</span><span class="grow"></span><span class="pill p-warn" id="ds-pipeline-mark" hidden style="display:none">Demo records</span><span class="prov" id="ds-pipeline-prov" hidden style="display:none"><b>Generated fixture</b><span class="sep">|</span>MyGov output contract</span><span class="t-caption" id="ds-pipeline-caption">Cases in flight</span></div>
+                    <div class="state" id="ds-pipeline-empty">
+                      <span class="st-k" id="ds-pipeline-empty-kicker">Pipeline unread</span>
+                      <h2 id="ds-pipeline-empty-head">No cases are in flight on this pack.</h2>
+                      <p>The queue is first-class once a permit source is granted or the pack generates records. Until then this tab stays empty. Stage names are not invented, and no internal routing is shown.</p>
+                      <span class="basis" id="ds-pipeline-empty-basis">Basis: no adapter granted and no records generated</span>
                     </div>
-                    <div class="panel">
-                      <div class="panel-head"><span class="t">Pipeline</span><span class="grow"></span><span class="pill p-warn" id="ds-pipeline-mark" hidden style="display:none">Demo records</span><span class="prov" id="ds-pipeline-prov" hidden style="display:none"><b>Generated fixture</b><span class="sep">|</span>MyGov output contract</span><span class="t-caption" id="ds-pipeline-caption">Cases in flight</span></div>
-                      <div class="state" id="ds-pipeline-empty">
-                        <span class="st-k">Pipeline unread</span>
-                        <h5 id="ds-pipeline-empty-head">No cases are in flight on this pack.</h5>
-                        <p>The queue is first-class once a permit source is granted or the pack generates records. Until then this tab stays empty. Stage names are not invented, and no internal routing is shown.</p>
-                        <span class="basis" id="ds-pipeline-empty-basis">Basis: no adapter granted and no records generated</span>
-                      </div>
-                      <div id="ds-pipeline-records" hidden>
-                        <table class="dt">
-                          <thead>
-                            <tr>
-                              <th scope="col">Case</th>
-                              <th scope="col">Subject</th>
-                              <th scope="col">Stage</th>
-                              <th scope="col">Place</th>
-                              <th scope="col">Due</th>
-                              <th scope="col">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody id="ds-pipeline-rows"></tbody>
-                        </table>
-                        <div class="panel-body">
-                          <span class="basis" id="ds-pipeline-basis">Basis: generated fixture records</span>
-                        </div>
+                    <div id="ds-pipeline-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Case</th>
+                            <th scope="col">Subject</th>
+                            <th scope="col">Stage</th>
+                            <th scope="col">Place</th>
+                            <th scope="col">Due</th>
+                            <th scope="col">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody id="ds-pipeline-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="ds-pipeline-basis">Basis: generated fixture records</span>
                       </div>
                     </div>
+                  </div>
                   </div>
                 </div>
               </div>
               <div class="ds-tab" id="tab-place">
                 <div class="shell-regions">
-                  <div class="colstack">
-                    <div class="panel">
-                      <div class="panel-head"><span class="t">Place</span><span class="grow"></span><span class="t-caption">Selected parcel</span></div>
-                      <div class="state">
-                        <span class="st-k">Place</span>
-                        <h5>Parcel resolves from the map, not a typed form.</h5>
-                        <p>Click the map to select a place. The identifier appears in the region footer as a consequence. Gold 48021:34137 is the demo fixture.</p>
-                        <span class="basis">Basis: public record on the SmartSite mount. No parcel form on this product.</span>
-                      </div>
-                    </div>
-                    <div class="panel">
-                      <div class="panel-head"><span class="t">On this place</span><span class="grow"></span><span class="t-caption">Related records</span></div>
-                      <div class="panel-body flush">
-                        <div class="srcreg"><i class="rail"></i><span class="nm"><b>Reviews</b><span>Submittals against this parcel</span></span><span class="pill p-quiet">Not connected</span></div>
-                        <div class="srcreg"><i class="rail"></i><span class="nm"><b>Cases</b><span>Permits, inspections, code enforcement</span></span><span class="pill p-quiet">Not connected</span></div>
-                        <div class="srcreg"><i class="rail"></i><span class="nm"><b>Files</b><span>Documents referenced onto this place</span></span><span class="pill p-restricted">Preview</span></div>
-                        <div class="srcreg"><i class="rail"></i><span class="nm"><b>Assets</b><span>City-owned records at this place</span></span><span class="pill p-quiet">Empty</span></div>
-                      </div>
+                  <div class="colstack" tabindex="0">
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Place</span><span class="grow"></span><span class="t-caption">Selected parcel</span></div>
+                    <div class="state">
+                      <span class="st-k">Place</span>
+                      <h2>Parcel resolves from the map, not a typed form.</h2>
+                      <p>Click the map to select a place. The identifier appears in the region footer as a consequence. Gold 48021:34137 is the demo fixture.</p>
+                      <span class="basis">Basis: public record on the SmartSite mount. No parcel form on this product.</span>
                     </div>
                   </div>
-                  <div class="colstack rail">
-                    <div class="region">
-                      <div class="region-bar">
-                        <span class="t">Place</span>
-                        <span class="grow"></span>
-                        <span class="t-caption">SmartSite</span>
-                        <button type="button" class="btn btn-ghost btn-sm" data-stage-present="map">Expand</button>
-                        <button type="button" class="btn btn-ghost btn-sm" data-stage-max="map">Full</button>
-                      </div>
-                      <div class="region-canvas" id="anchor-place-map" data-stage="map">
-                        <span class="mount-note">The place map mounts here.</span>
-                      </div>
-                      <div class="region-foot">
-                        <span class="t-data">48021:34137</span>
-                        <span class="t-caption">Demo fixture</span>
-                        <span class="grow"></span>
-                        <span class="prov"><b>Public record</b></span>
-                      </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">On this place</span><span class="grow"></span><span class="t-caption">Related records</span></div>
+                    <div class="panel-body flush">
+                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Reviews</b><span>Submittals against this parcel</span></span><span class="pill p-quiet">Not connected</span></div>
+                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Cases</b><span>Permits, inspections, code enforcement</span></span><span class="pill p-quiet">Not connected</span></div>
+                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Files</b><span>Documents referenced onto this place</span></span><span class="pill p-restricted">Preview</span></div>
+                      <div class="srcreg"><i class="rail"></i><span class="nm"><b>Assets</b><span>City-owned records at this place</span></span><span class="pill p-quiet">Empty</span></div>
                     </div>
                   </div>
-                </div>
-              </div>
-              <div class="ds-tab" id="tab-review">
-                <div class="shell-regions solo">
+                  </div>
+                  <div class="colstack rail" tabindex="0">
                   <div class="region">
                     <div class="region-bar">
-                      <span class="t">Review</span>
+                      <span class="t">Place</span>
                       <span class="grow"></span>
-                      <span class="t-caption">Plan Review, mounted at city altitude</span>
-                      <a class="btn btn-ghost btn-sm" href="/?work=review">Open in Work</a>
-                      <button type="button" class="btn btn-ghost btn-sm" data-stage-max="review">Full</button>
+                      <span class="t-caption">SmartSite</span>
+                      <button type="button" class="btn btn-ghost btn-sm" data-stage-present="map">Expand</button>
+                      <button type="button" class="btn btn-ghost btn-sm" data-stage-max="map">Full</button>
                     </div>
-                    <div class="region-canvas doc" id="anchor-ds-review" data-stage="review">
-                      <span class="mount-note">The review console mounts here.</span>
+                    <div class="region-canvas" id="anchor-place-map" data-stage="map">
+                      <span class="mount-note">The place map mounts here.</span>
                     </div>
                     <div class="region-foot">
-                      <span class="t-caption" id="review-basis">Native compose is a later card. This tab mounts the same console as Work, Plan review.</span>
+                      <span class="t-data">48021:34137</span>
+                      <span class="t-caption">Demo fixture</span>
+                      <span class="grow"></span>
+                      <span class="prov"><b>Public record</b></span>
                     </div>
+                  </div>
                   </div>
                 </div>
               </div>
               <div class="ds-tab" id="tab-inspections">
-                <div class="shell-regions solo"><div class="panel"><div class="state"><span class="st-k">Inspections</span><h5>No inspection source is connected.</h5><p>This tab is chrome. It does not invent a board or a count.</p><span class="basis">Basis: no adapter granted</span></div></div></div>
+                <div class="shell-regions solo">
+                  <div class="colstack" tabindex="0">
+                  <div class="metrics" id="ds-insp-metrics">
+                    <div class="metric" data-metric="past-due"><span class="k">Past due</span><span class="v word">Not read</span><span class="n">No inspection source</span></div>
+                    <div class="metric" data-metric="unscheduled"><span class="k">Unscheduled</span><span class="v word">Not read</span><span class="n">No inspection source</span></div>
+                    <div class="metric" data-metric="scheduled"><span class="k">Scheduled</span><span class="v word">Not read</span><span class="n">No inspection source</span></div>
+                    <div class="metric" data-metric="completed"><span class="k">Completed</span><span class="v word">Not read</span><span class="n">No inspection source</span></div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Inspections</span><span class="grow"></span><span class="pill p-warn" id="ds-insp-mark" hidden style="display:none">Demo records</span><span class="prov" id="ds-insp-prov" hidden style="display:none"><b>Generated fixture</b><span class="sep">|</span>MyGov output contract</span><span class="t-caption" id="ds-insp-caption">Inspections on the board</span></div>
+                    <div class="state" id="ds-insp-state">
+                      <span class="st-k" id="ds-insp-kicker">Inspections unread</span>
+                      <h2 id="ds-insp-head">No inspections are on the board for this pack.</h2>
+                      <p>An inspection carries a result only once it has happened, so the result column states not inspected rather than leaving a cell blank. No inspector is named.</p>
+                      <span class="basis" id="ds-insp-basis">Basis: no adapter granted and no records generated</span>
+                    </div>
+                    <div id="ds-insp-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Inspection</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Result</th>
+                            <th scope="col">Place</th>
+                            <th scope="col">When</th>
+                            <th scope="col">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody id="ds-insp-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="ds-insp-recordsbasis">Basis: generated fixture records</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Result</span><span class="grow"></span><span class="t-caption">Paired to the status, four measured classes</span></div>
+                    <div class="panel-body flush" id="ds-insp-results"></div>
+                    <div class="panel-body">
+                      <span class="basis" id="ds-insp-results-basis">Basis: no inspection source has been read for this pack</span>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Inspector load</span><span class="grow"></span><span class="t-caption">Grouped by an opaque reference</span></div>
+                    <div class="panel-body flush" id="ds-insp-load"></div>
+                    <div class="panel-body">
+                      <span class="basis" id="ds-insp-load-basis">Basis: no inspection source has been read for this pack</span>
+                    </div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+              <div class="ds-tab" id="tab-work-orders">
+                <div class="shell-regions solo">
+                  <div class="colstack" tabindex="0">
+                  <div class="metrics" id="ds-wo-metrics">
+                    <div class="metric" data-metric="past-sla"><span class="k">Past SLA</span><span class="v word">Not read</span><span class="n">No work-order source</span></div>
+                    <div class="metric" data-metric="at-risk"><span class="k">At risk</span><span class="v word">Not read</span><span class="n">No work-order source</span></div>
+                    <div class="metric" data-metric="scheduled"><span class="k">Scheduled</span><span class="v word">Not read</span><span class="n">No work-order source</span></div>
+                    <div class="metric" data-metric="closed"><span class="k">Closed</span><span class="v word">Not read</span><span class="n">No work-order source</span></div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Work orders</span><span class="grow"></span><span class="pill p-warn" id="ds-wo-mark" hidden style="display:none">Demo records</span><span class="prov" id="ds-wo-prov" hidden style="display:none"><b>Generated fixture</b><span class="sep">|</span>MyGov output contract</span><span class="t-caption" id="ds-wo-caption">Orders in the queue</span></div>
+                    <div class="state" id="ds-wo-state">
+                      <span class="st-k" id="ds-wo-kicker">Work orders unread</span>
+                      <h2 id="ds-wo-head">No work orders are in the queue for this pack.</h2>
+                      <p>Elapsed hours are measured against a declared target rather than a promise. Every figure below counts this queue and nothing else.</p>
+                      <span class="basis" id="ds-wo-basis">Basis: no adapter granted and no records generated</span>
+                    </div>
+                    <div id="ds-wo-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Order</th>
+                            <th scope="col">Subject</th>
+                            <th scope="col">Stage</th>
+                            <th scope="col">Place</th>
+                            <th scope="col">Due</th>
+                            <th scope="col">Elapsed</th>
+                            <th scope="col">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody id="ds-wo-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="ds-wo-recordsbasis">Basis: generated fixture records</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Service level</span><span class="grow"></span><span class="t-caption">Measured off the queue against a declared target</span></div>
+                    <div class="panel-body">
+                      <dl class="kv" id="ds-wo-sla"></dl>
+                      <span class="basis" id="ds-wo-sla-basis">Basis: no work-order source has been read for this pack</span>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Daily queue</span><span class="grow"></span><span class="t-caption">Relative days, never a calendar date</span></div>
+                    <div class="panel-body flush" id="ds-wo-daily"></div>
+                    <div class="panel-body">
+                      <span class="basis" id="ds-wo-daily-basis">Basis: no work-order source has been read for this pack</span>
+                    </div>
+                  </div>
+                  </div>
+                </div>
               </div>
               <div class="ds-tab" id="tab-code-enforcement">
-                <div class="shell-regions solo"><div class="panel"><div class="state"><span class="st-k">Code enforcement</span><h5>No case source is connected.</h5><p>This tab is chrome. It does not invent a case list. Code enforcement has one home and it is this tab.</p><span class="basis">Basis: no adapter granted</span></div></div></div>
+                <div class="shell-regions solo">
+                  <div class="colstack" tabindex="0">
+                  <div class="metrics" id="ds-ce-metrics">
+                    <div class="metric" data-metric="past-compliance"><span class="k">Past compliance date</span><span class="v word">Not read</span><span class="n">No case source</span></div>
+                    <div class="metric" data-metric="awaiting-reinspection"><span class="k">Awaiting reinspection</span><span class="v word">Not read</span><span class="n">No case source</span></div>
+                    <div class="metric" data-metric="notice-issued"><span class="k">Notice issued</span><span class="v word">Not read</span><span class="n">No case source</span></div>
+                    <div class="metric" data-metric="closed-compliant"><span class="k">Closed compliant</span><span class="v word">Not read</span><span class="n">No case source</span></div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Cases</span><span class="grow"></span><span class="pill p-warn" id="ds-ce-mark" hidden style="display:none">Demo records</span><span class="prov" id="ds-ce-prov" hidden style="display:none"><b>Generated fixture</b><span class="sep">|</span>MyGov output contract</span><span class="t-caption" id="ds-ce-caption">Cases on the ladder</span></div>
+                    <div class="state" id="ds-ce-state">
+                      <span class="st-k" id="ds-ce-kicker">Code enforcement unread</span>
+                      <h2 id="ds-ce-head">No enforcement cases are open on this pack.</h2>
+                      <p>The escalation rung is ordered rather than categorical, so the step travels with the case. No assessed figure is presented anywhere on this tab.</p>
+                      <span class="basis" id="ds-ce-basis">Basis: no adapter granted and no records generated</span>
+                    </div>
+                    <div id="ds-ce-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Case</th>
+                            <th scope="col">Violation</th>
+                            <th scope="col">Escalation</th>
+                            <th scope="col">Step</th>
+                            <th scope="col">Place</th>
+                            <th scope="col">Compliance</th>
+                            <th scope="col">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody id="ds-ce-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="ds-ce-recordsbasis">Basis: generated fixture records</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Escalation ladder</span><span class="grow"></span><span class="t-caption">In declared step order, not array order</span></div>
+                    <div class="panel-body flush" id="ds-ce-ladder"></div>
+                    <div class="panel-body">
+                      <span class="basis" id="ds-ce-ladder-basis">Basis: no case source has been read for this pack</span>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Case load</span><span class="grow"></span><span class="t-caption">Open and closed are two measured filters, never one minus the other</span></div>
+                    <div class="panel-body">
+                      <dl class="kv" id="ds-ce-stats"></dl>
+                      <span class="basis" id="ds-ce-stats-basis">Basis: no case source has been read for this pack</span>
+                    </div>
+                  </div>
+                  </div>
+                </div>
               </div>
               <div class="ds-tab" id="tab-licenses">
-                <div class="shell-regions solo"><div class="panel"><div class="state"><span class="st-k">Licenses</span><h5>No license source is connected.</h5><p>This tab is chrome. It does not invent active licenses.</p><span class="basis">Basis: no adapter granted</span></div></div></div>
+                <div class="shell-regions solo">
+                  <div class="colstack" tabindex="0">
+                  <div class="metrics" id="ds-lic-metrics">
+                    <div class="metric" data-metric="expired"><span class="k">Expired</span><span class="v word">Not read</span><span class="n">No licence source</span></div>
+                    <div class="metric" data-metric="expiring"><span class="k">Expiring</span><span class="v word">Not read</span><span class="n">No licence source</span></div>
+                    <div class="metric" data-metric="renewal-submitted"><span class="k">Renewal submitted</span><span class="v word">Not read</span><span class="n">No licence source</span></div>
+                    <div class="metric" data-metric="active"><span class="k">Active</span><span class="v word">Not read</span><span class="n">No licence source</span></div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Licence roll</span><span class="grow"></span><span class="pill p-warn" id="ds-lic-mark" hidden style="display:none">Demo records</span><span class="prov" id="ds-lic-prov" hidden style="display:none"><b>Generated fixture</b><span class="sep">|</span>MyGov output contract</span><span class="t-caption" id="ds-lic-caption">Licences on the roll</span></div>
+                    <div class="state" id="ds-lic-state">
+                      <span class="st-k" id="ds-lic-kicker">Licences unread</span>
+                      <h2 id="ds-lic-head">No licences are on the roll for this pack.</h2>
+                      <p>A licensee is a business with a real name, so the holder is an opaque reference. No renewal charge is presented.</p>
+                      <span class="basis" id="ds-lic-basis">Basis: no adapter granted and no records generated</span>
+                    </div>
+                    <div id="ds-lic-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Licence</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Holder</th>
+                            <th scope="col">Place</th>
+                            <th scope="col">Expiry</th>
+                            <th scope="col">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody id="ds-lic-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="ds-lic-recordsbasis">Basis: generated fixture records</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Expiry</span><span class="grow"></span><span class="t-caption">Bands derived from the offset, inclusive and non-overlapping</span></div>
+                    <div class="panel-body flush" id="ds-lic-expiry"></div>
+                    <div class="panel-body">
+                      <span class="basis" id="ds-lic-expiry-basis">Basis: no licence source has been read for this pack</span>
+                    </div>
+                  </div>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -475,11 +725,11 @@
                 <p class="lede">No metric strip on this lens. Four zeros in a header would be four false claims.</p>
               </header>
               <div class="shell-regions">
-                <div class="colstack">
+                <div class="colstack" tabindex="0">
                   <div class="panel">
                     <div class="state">
                       <span class="st-k">No source connected</span>
-                      <h5>No finance records for this city yet.</h5>
+                      <h2>No finance records for this city yet.</h2>
                       <p>This lens reads from the city's adopted budget, its fund ledger, permit fee revenue, and department spend. None of the four has been connected as a confirmed ledger, so there is nothing to report. That is not a zero balance.</p>
                       <span class="basis">Basis: 0 of 4 required sources connected, counted from the source register below. Contact: city finance director. Payments unclaimed.</span>
                     </div>
@@ -494,7 +744,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="colstack">
+                <div class="colstack" tabindex="0">
                   <div class="panel">
                     <div class="panel-head"><span class="t">Once connected</span></div>
                     <div class="panel-body">
@@ -512,7 +762,7 @@
             </section>
 
             <section class="lens" id="lens-citizen">
-              <div class="cz-scroll sc-light">
+              <div class="cz-scroll sc-light" tabindex="0">
                 <div class="cz">
                   <div>
                     <div class="titlerow">
@@ -557,33 +807,108 @@
               </div>
             </section>
 
-            <section class="lens roster-lens" id="lens-public-works">
+            <section class="lens" id="lens-public-works">
               <header class="pagehead">
                 <div class="crumb"><b data-pack-name>This city</b> <span>/</span> Public works</div>
-                <div class="titlerow"><h1>Public works</h1><span class="pill p-quiet">Not built</span></div>
+                <div class="titlerow"><h1>Public works</h1><span class="pill p-quiet" id="pw-state-chip">Not read</span><span class="grow"></span><span class="t-caption" id="pw-region-rule">No region has been read for this pack</span></div>
+                <p class="lede">Capital projects and call handling. Each region states its own source, carries its own counting rule, and prints no figure this pack has not made.</p>
               </header>
               <div class="shell-regions solo">
-                <div class="panel">
-                  <div class="state">
-                    <span class="st-k">Lens on the roster</span>
-                    <h5>Public works is named, and not built.</h5>
-                    <p>The department is on the roster so the navigation never implies coverage the product does not have. Capital projects, reporting, and phone analytics land here when the lens is built.</p>
-                    <span class="basis">Basis: no view designed for this lens. Its jobs are listed on Connections with their homes.</span>
+                <div class="colstack" tabindex="0">
+                  <div class="metrics" id="pw-cip-metrics">
+                    <div class="metric" data-metric="stalled"><span class="k">Stalled</span><span class="v word">Not read</span><span class="n">No projects source</span></div>
+                    <div class="metric" data-metric="at-risk"><span class="k">At risk</span><span class="v word">Not read</span><span class="n">No projects source</span></div>
+                    <div class="metric" data-metric="in-progress"><span class="k">In progress</span><span class="v word">Not read</span><span class="n">No projects source</span></div>
+                    <div class="metric" data-metric="complete"><span class="k">Complete</span><span class="v word">Not read</span><span class="n">No projects source</span></div>
                   </div>
-                  <div class="roster-note">
-                    <span class="t-label">Jobs waiting on this lens</span>
-                    <div class="roster-list">
-                      <span class="prov"><b>CIP / projects</b></span>
-                      <span class="prov"><b>Reporting</b></span>
-                      <span class="prov"><b>Phones</b></span>
-                      <span class="prov"><b>Reports centre</b></span>
-                      <span class="prov"><b>Call analytics</b></span>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Capital projects</span><span class="grow"></span><span class="pill p-warn" id="pw-cip-mark" hidden>Demo records</span><span class="prov" id="pw-cip-prov" hidden><b>Generated fixture</b><span class="sep">|</span>Reporting output contract</span><span class="t-caption" id="pw-cip-caption">Not read</span></div>
+                    <div class="state" id="pw-cip-state">
+                      <span class="st-k" id="pw-cip-kicker">Region unread</span>
+                      <h2 id="pw-cip-head">The capital projects register has not been read for this pack.</h2>
+                      <p>A capital improvement register is a budget document everywhere else. This one carries no budget figure, no spend and no percent of budget, because a money number beside a city name is a claim about that city's finances.</p>
+                      <span class="basis" id="pw-cip-basis">Basis: no region payload has been read for this pack</span>
+                    </div>
+                    <div id="pw-cip-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Project</th>
+                            <th scope="col">Subject</th>
+                            <th scope="col">Phase</th>
+                            <th scope="col">Place</th>
+                            <th scope="col">Schedule</th>
+                            <th scope="col">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody id="pw-cip-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="pw-cip-schedule">Schedule variance has not been read for this pack</span>
+                        <span class="basis" id="pw-cip-budget">The budget position has not been read for this pack</span>
+                      </div>
+                      <div class="panel-head"><span class="t">Phase</span><span class="grow"></span><span class="t-caption" id="pw-cip-phase-rule">Where each project sits in its own lifecycle</span></div>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Phase</th>
+                            <th scope="col">Projects</th>
+                          </tr>
+                        </thead>
+                        <tbody id="pw-cip-phase-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="pw-cip-recordsbasis">Basis: generated fixture records</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Call analytics</span><span class="grow"></span><span class="pill p-warn" id="pw-calls-mark" hidden>Demo records</span><span class="prov" id="pw-calls-prov" hidden><b>Generated fixture</b><span class="sep">|</span>Phone output contract</span><span class="t-caption" id="pw-calls-caption">Not read</span></div>
+                    <div class="state" id="pw-calls-state">
+                      <span class="st-k" id="pw-calls-kicker">Region unread</span>
+                      <h2 id="pw-calls-head">Call handling has not been read for this pack.</h2>
+                      <p>The unit here is a queue volume for one relative day and never a call. No call detail, no recording and no mapping from a line to the person who answers it is generated, and none is displayed.</p>
+                      <span class="basis" id="pw-calls-basis">Basis: no region payload has been read for this pack</span>
+                    </div>
+                    <div id="pw-calls-records" hidden>
+                      <div class="panel-body">
+                        <span class="basis" id="pw-calls-totals">Call volume has not been read for this pack</span>
+                        <span class="basis" id="pw-calls-excluded">The excluded families have not been read for this pack</span>
+                      </div>
+                      <div class="panel-head"><span class="t">By queue</span><span class="grow"></span><span class="t-caption" id="pw-calls-queue-rule">A queue is a function, never a desk</span></div>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Queue</th>
+                            <th scope="col">Offered</th>
+                            <th scope="col">Answered</th>
+                            <th scope="col">Abandoned</th>
+                            <th scope="col">Buckets</th>
+                          </tr>
+                        </thead>
+                        <tbody id="pw-calls-queue-rows"></tbody>
+                      </table>
+                      <div class="panel-head"><span class="t">By relative day</span><span class="grow"></span><span class="t-caption" id="pw-calls-day-rule">No calendar date is printed</span></div>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Day</th>
+                            <th scope="col">Offered</th>
+                            <th scope="col">Answered</th>
+                            <th scope="col">Abandoned</th>
+                            <th scope="col">Buckets</th>
+                          </tr>
+                        </thead>
+                        <tbody id="pw-calls-day-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="pw-calls-recordsbasis">Basis: generated fixture records</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </section>
-
             <section class="lens roster-lens" id="lens-parks">
               <header class="pagehead">
                 <div class="crumb"><b data-pack-name>This city</b> <span>/</span> Parks</div>
@@ -593,7 +918,7 @@
                 <div class="panel">
                   <div class="state">
                     <span class="st-k">Lens on the roster</span>
-                    <h5>Parks is named, and not built.</h5>
+                    <h2>Parks is named, and not built.</h2>
                     <p>Parks is a department page on the live city roster. It is named here so the roster stays honest about coverage rather than hiding behind an overflow menu.</p>
                     <span class="basis">Basis: no view designed for this lens. Municipal court is ruled long-tail and stays on Connections.</span>
                   </div>
@@ -601,84 +926,252 @@
               </div>
             </section>
 
-            <section class="lens roster-lens" id="lens-police">
+            <section class="lens" id="lens-police">
               <header class="pagehead">
                 <div class="crumb"><b data-pack-name>This city</b> <span>/</span> Police</div>
-                <div class="titlerow"><h1>Police</h1><span class="pill p-quiet">Not built</span></div>
+                <div class="titlerow"><h1>Police</h1><span class="pill p-quiet" id="police-state-chip">Not read</span><span class="grow"></span><span class="t-caption" id="police-region-rule">No region has been read for this pack</span></div>
+                <p class="lede">Cameras and the patrol roster. Each region states its own source, and the roster is the one region in this product that is BUILT with no source at all, which is a different sentence from a region that does not exist.</p>
               </header>
               <div class="shell-regions solo">
-                <div class="panel">
-                  <div class="state">
-                    <span class="st-k">Lens on the roster</span>
-                    <h5>Police is named, and not built.</h5>
-                    <p>The emergency operations jobs fold into this lens and Fire and EMS rather than a separate operations centre product. No incident wallpaper is drawn before a source exists.</p>
-                    <span class="basis">Basis: no view designed for this lens. Vendor grants are later cards, not this chrome.</span>
+                <div class="colstack" tabindex="0">
+                  <div class="metrics" id="police-cameras-metrics">
+                    <div class="metric" data-metric="offline"><span class="k">Offline</span><span class="v word">Not read</span><span class="n">No camera source</span></div>
+                    <div class="metric" data-metric="signal-loss"><span class="k">Signal loss</span><span class="v word">Not read</span><span class="n">No camera source</span></div>
+                    <div class="metric" data-metric="firmware-due"><span class="k">Firmware due</span><span class="v word">Not read</span><span class="n">No camera source</span></div>
+                    <div class="metric" data-metric="online"><span class="k">Online</span><span class="v word">Not read</span><span class="n">No camera source</span></div>
                   </div>
-                  <div class="roster-note">
-                    <span class="t-label">Jobs waiting on this lens</span>
-                    <div class="roster-list">
-                      <span class="prov"><b>Patrol</b></span>
-                      <span class="prov"><b>Cameras</b></span>
-                      <span class="prov"><b>Incident log</b></span>
-                      <span class="prov"><b>Regional operations map</b></span>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Camera inventory</span><span class="grow"></span><span class="pill p-warn" id="police-cameras-mark" hidden>Demo records</span><span class="prov" id="police-cameras-prov" hidden><b>Generated fixture</b><span class="sep">|</span>Camera output contract</span><span class="t-caption" id="police-cameras-caption">Not read</span></div>
+                    <div class="state" id="police-cameras-state">
+                      <span class="st-k" id="police-cameras-kicker">Region unread</span>
+                      <h2 id="police-cameras-head">The camera inventory has not been read for this pack.</h2>
+                      <p>Devices, the sites they group under, and how each one is reporting. No plate read and no person of interest is carried here: those are surveillance records about identifiable people, and the record contract declares both as fields a generated record never has.</p>
+                      <span class="basis" id="police-cameras-basis">Basis: no region payload has been read for this pack</span>
+                    </div>
+                    <div id="police-cameras-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Device</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Site</th>
+                            <th scope="col">Placement</th>
+                            <th scope="col">Occupancy</th>
+                          </tr>
+                        </thead>
+                        <tbody id="police-cameras-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="police-cameras-privacy">The excluded record families have not been read for this pack</span>
+                        <span class="basis" id="police-cameras-inventory">The inventory position has not been read for this pack</span>
+                      </div>
+                      <div class="panel-head"><span class="t">Sites</span><span class="grow"></span><span class="t-caption" id="police-cameras-sites-rule">An opaque site reference, never an address</span></div>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Site</th>
+                            <th scope="col">Placement</th>
+                            <th scope="col">Cameras</th>
+                          </tr>
+                        </thead>
+                        <tbody id="police-cameras-site-rows"></tbody>
+                      </table>
+                      <div class="panel-head"><span class="t">Occupancy</span><span class="grow"></span><span class="t-caption" id="police-cameras-occupancy-rule">A band, never a head count</span></div>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Band</th>
+                            <th scope="col">Cameras</th>
+                          </tr>
+                        </thead>
+                        <tbody id="police-cameras-occupancy-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="police-cameras-occupancy-basis">The occupancy dimension has not been read for this pack</span>
+                        <span class="basis" id="police-cameras-recordsbasis">Basis: generated fixture records</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="metrics" id="patrol-vehicles-metrics">
+                    <div class="metric" data-metric="out-of-service"><span class="k">Out of service</span><span class="v word">Not read</span><span class="n">No patrol source</span></div>
+                    <div class="metric" data-metric="inspection-due"><span class="k">Inspection due</span><span class="v word">Not read</span><span class="n">No patrol source</span></div>
+                    <div class="metric" data-metric="in-shop"><span class="k">In shop</span><span class="v word">Not read</span><span class="n">No patrol source</span></div>
+                    <div class="metric" data-metric="in-service"><span class="k">In service</span><span class="v word">Not read</span><span class="n">No patrol source</span></div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Patrol roster</span><span class="grow"></span><span class="pill p-warn" id="patrol-vehicles-mark" hidden>Demo records</span><span class="prov" id="patrol-vehicles-prov" hidden><b>Generated fixture</b><span class="sep">|</span>Telemetry output contract</span><span class="t-caption" id="patrol-vehicles-caption">Not read</span></div>
+                    <div class="state" id="patrol-vehicles-state">
+                      <span class="st-k" id="patrol-vehicles-kicker">Region unread</span>
+                      <h2 id="patrol-vehicles-head">The patrol roster has not been read for this pack.</h2>
+                      <p>This region is BUILT. It declares a record shape, it carries a working generator, and its tiles are the instrument it ships with. What it does not have on this pack is a source, and that is what the basis below says. Nothing is drawn to fill the space and the tiles stay unread rather than showing a zero, because a zero would be a claim about a fleet nobody has read.</p>
+                      <span class="basis" id="patrol-vehicles-basis">Basis: no region payload has been read for this pack</span>
+                    </div>
+                    <div id="patrol-vehicles-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Unit</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Operator</th>
+                          </tr>
+                        </thead>
+                        <tbody id="patrol-vehicles-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="patrol-vehicles-operator">The operator reference has not been read for this pack</span>
+                        <span class="basis" id="patrol-vehicles-recordsbasis">Basis: generated fixture records</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Not built on this lens</span><span class="grow"></span><span class="pill p-quiet">Not built</span></div>
+                    <div class="panel-body">
+                      <p>Two more Police jobs are named on the live city roster and are not regions on this product yet. They are listed rather than hidden, so the lens never implies coverage it does not have.</p>
+                      <div class="roster-note">
+                        <span class="t-label">Not a region on this product</span>
+                        <div class="roster-list">
+                          <span class="prov"><b>Incident log</b></span>
+                          <span class="prov"><b>Regional operations map</b></span>
+                        </div>
+                      </div>
+                      <span class="basis">Basis: neither job is a registered region, so the surface does not exist. A registered region with no source says something else, and the patrol roster above is saying it.</span>
                     </div>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section class="lens roster-lens" id="lens-fire-ems">
+            <section class="lens" id="lens-fire-ems">
               <header class="pagehead">
                 <div class="crumb"><b data-pack-name>This city</b> <span>/</span> Fire and EMS</div>
-                <div class="titlerow"><h1>Fire and EMS</h1><span class="pill p-quiet">Not built</span></div>
+                <div class="titlerow"><h1>Fire and EMS</h1><span class="pill p-quiet" id="fire-ems-state-chip">Not read</span><span class="grow"></span><span class="t-caption" id="fire-ems-region-rule">No region has been read for this pack</span></div>
+                <p class="lede">Apparatus readiness, counted per station rather than city wide. A city with every out of service truck in one station is a different fact from a city with one in each, and a rollup cannot say which.</p>
               </header>
               <div class="shell-regions solo">
-                <div class="panel">
-                  <div class="state">
-                    <span class="st-k">Lens on the roster</span>
-                    <h5>Fire and EMS is named, and not built.</h5>
-                    <p>Occupancies, volunteer response, county dispatch, and flood and weather land here. Flood layers are records or map overlays on Place, never a separate product.</p>
-                    <span class="basis">Basis: no view designed for this lens. Vendor grants are later cards, not this chrome.</span>
+                <div class="colstack" tabindex="0">
+                  <div class="metrics" id="fire-apparatus-metrics">
+                    <div class="metric" data-metric="out-of-service"><span class="k">Out of service</span><span class="v word">Not read</span><span class="n">No apparatus source</span></div>
+                    <div class="metric" data-metric="inspection-due"><span class="k">Inspection due</span><span class="v word">Not read</span><span class="n">No apparatus source</span></div>
+                    <div class="metric" data-metric="in-shop"><span class="k">In shop</span><span class="v word">Not read</span><span class="n">No apparatus source</span></div>
+                    <div class="metric" data-metric="in-service"><span class="k">In service</span><span class="v word">Not read</span><span class="n">No apparatus source</span></div>
                   </div>
-                  <div class="roster-note">
-                    <span class="t-label">Jobs waiting on this lens</span>
-                    <div class="roster-list">
-                      <span class="prov"><b>Occupancies</b></span>
-                      <span class="prov"><b>Volunteer response</b></span>
-                      <span class="prov"><b>County dispatch</b></span>
-                      <span class="prov"><b>Flood and weather</b></span>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Apparatus and stations</span><span class="grow"></span><span class="pill p-warn" id="fire-apparatus-mark" hidden>Demo records</span><span class="prov" id="fire-apparatus-prov" hidden><b>Generated fixture</b><span class="sep">|</span>Apparatus output contract</span><span class="t-caption" id="fire-apparatus-caption">Not read</span></div>
+                    <div class="state" id="fire-apparatus-state">
+                      <span class="st-k" id="fire-apparatus-kicker">Region unread</span>
+                      <h2 id="fire-apparatus-head">Apparatus readiness has not been read for this pack.</h2>
+                      <p>Apparatus, the stations they are housed in, and the readiness band each one is in. No crew is carried here: a granted feed is where an assigned crew would come from, and a roster of real firefighters is not a fixture.</p>
+                      <span class="basis" id="fire-apparatus-basis">Basis: no region payload has been read for this pack</span>
+                    </div>
+                    <div id="fire-apparatus-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Unit</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Station</th>
+                          </tr>
+                        </thead>
+                        <tbody id="fire-apparatus-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="fire-apparatus-crew">The crew position has not been read for this pack</span>
+                      </div>
+                      <div class="panel-head"><span class="t">Stations</span><span class="grow"></span><span class="t-caption" id="fire-apparatus-stations-rule">Readiness per station, never a city-wide rollup</span></div>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Station</th>
+                            <th scope="col">Apparatus</th>
+                            <th scope="col">In service</th>
+                          </tr>
+                        </thead>
+                        <tbody id="fire-apparatus-station-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="fire-apparatus-ready-rule">The readiness counting rule has not been read for this pack</span>
+                        <span class="basis" id="fire-apparatus-recordsbasis">Basis: generated fixture records</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Not built on this lens</span><span class="grow"></span><span class="pill p-quiet">Not built</span></div>
+                    <div class="panel-body">
+                      <p>Four more Fire and EMS jobs are named on the live city roster and are not regions on this product yet. Flood layers are records or map overlays on Place when they arrive, never a separate product.</p>
+                      <div class="roster-note">
+                        <span class="t-label">Not a region on this product</span>
+                        <div class="roster-list">
+                          <span class="prov"><b>Occupancies</b></span>
+                          <span class="prov"><b>Volunteer response</b></span>
+                          <span class="prov"><b>County dispatch</b></span>
+                          <span class="prov"><b>Flood and weather</b></span>
+                        </div>
+                      </div>
+                      <span class="basis">Basis: none of the four is a registered region, so the surface does not exist. A registered region with no source says something else, and the Police lens carries one of those.</span>
                     </div>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section class="lens roster-lens" id="lens-fleet">
+            <section class="lens" id="lens-fleet">
               <header class="pagehead">
                 <div class="crumb"><b data-pack-name>This city</b> <span>/</span> Fleet</div>
-                <div class="titlerow"><h1>Fleet</h1><span class="pill p-quiet">Not built</span></div>
+                <div class="titlerow"><h1>Fleet</h1><span class="pill p-quiet" id="fleet-state-chip">Not read</span><span class="grow"></span><span class="t-caption" id="fleet-region-rule">No region has been read for this pack</span></div>
+                <p class="lede">Vehicles and the operators they group under. A vehicle on a telemetry contract is a fleet record on this lens and never a city-owned asset record.</p>
               </header>
               <div class="shell-regions solo">
-                <div class="panel">
-                  <div class="state">
-                    <span class="st-k">Lens on the roster</span>
-                    <h5>Fleet is named, and not built.</h5>
-                    <p>Vehicles, drivers, utilisation, and safety land here. A vehicle on a telemetry feed is a fleet record on this lens; it is never a city-owned asset record on Assets.</p>
-                    <span class="basis">Basis: no view designed for this lens. Fleet telemetry does not fill the Assets inventory.</span>
+                <div class="colstack" tabindex="0">
+                  <div class="metrics" id="fleet-metrics">
+                    <div class="metric" data-metric="out-of-service"><span class="k">Out of service</span><span class="v word">Not read</span><span class="n">No fleet source</span></div>
+                    <div class="metric" data-metric="inspection-due"><span class="k">Inspection due</span><span class="v word">Not read</span><span class="n">No fleet source</span></div>
+                    <div class="metric" data-metric="in-shop"><span class="k">In shop</span><span class="v word">Not read</span><span class="n">No fleet source</span></div>
+                    <div class="metric" data-metric="in-service"><span class="k">In service</span><span class="v word">Not read</span><span class="n">No fleet source</span></div>
                   </div>
-                  <div class="roster-note">
-                    <span class="t-label">Jobs waiting on this lens</span>
-                    <div class="roster-list">
-                      <span class="prov"><b>Vehicles</b></span>
-                      <span class="prov"><b>Drivers</b></span>
-                      <span class="prov"><b>Utilisation</b></span>
-                      <span class="prov"><b>Safety</b></span>
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Vehicle roster</span><span class="grow"></span><span class="pill p-warn" id="fleet-roster-mark" hidden>Demo records</span><span class="prov" id="fleet-roster-prov" hidden><b>Generated fixture</b><span class="sep">|</span>Telemetry output contract</span><span class="t-caption" id="fleet-roster-caption">Not read</span></div>
+                    <div class="state" id="fleet-roster-state">
+                      <span class="st-k" id="fleet-roster-kicker">Region unread</span>
+                      <h2 id="fleet-roster-head">The vehicle roster has not been read for this pack.</h2>
+                      <p>Vehicles, the operators they group under, and the condition each one is in. Nothing on this lens is written to the city inventory and nothing here counts toward Assets.</p>
+                      <span class="basis" id="fleet-roster-basis">Basis: no region payload has been read for this pack</span>
+                    </div>
+                    <div id="fleet-roster-records" hidden>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Vehicle</th>
+                            <th scope="col">Unit</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Operator</th>
+                            <th scope="col">Odometer</th>
+                          </tr>
+                        </thead>
+                        <tbody id="fleet-roster-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="fleet-roster-inventory">The inventory position has not been read for this pack</span>
+                      </div>
+                      <div class="panel-head"><span class="t">Operators</span><span class="grow"></span><span class="t-caption" id="fleet-operator-rule">An opaque reference, never a person</span></div>
+                      <table class="dt">
+                        <thead>
+                          <tr>
+                            <th scope="col">Operator</th>
+                            <th scope="col">Vehicles</th>
+                          </tr>
+                        </thead>
+                        <tbody id="fleet-operator-rows"></tbody>
+                      </table>
+                      <div class="panel-body">
+                        <span class="basis" id="fleet-operator-basis">The operator dimension has not been read for this pack</span>
+                        <span class="basis" id="fleet-roster-recordsbasis">Basis: generated fixture records</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </section>
-
             <section class="lens" id="work-review">
               <header class="pagehead">
                 <div class="crumb"><b data-pack-name>This city</b> <span>/</span> Plan review</div>
@@ -744,7 +1237,7 @@
                 <div class="panel">
                   <div class="state">
                     <span class="st-k">Not built</span>
-                    <h5>City document search is not built on this product.</h5>
+                    <h2>City document search is not built on this product.</h2>
                     <p>Document search stays a named island on the live city until a records-search lens is designed. The top-bar search box is disabled for the same reason, so the chrome and this page say the same thing.</p>
                     <span class="basis">Basis: no records-search view designed. Named on Connections as an island, not as a home that exists.</span>
                   </div>
@@ -774,11 +1267,11 @@
               </div>
               <div class="assets-tab on" id="atab-inventory">
                 <div class="shell-regions">
-                  <div class="colstack">
+                  <div class="colstack" tabindex="0">
                     <div class="panel">
                       <div class="state">
                         <span class="st-k">No city-owned assets</span>
-                        <h5>No city-owned asset records for <span data-pack-key>this pack</span>.</h5>
+                        <h2>No city-owned asset records for <span data-pack-key>this pack</span>.</h2>
                         <p>This page is the inventory. Empty is the designed state. A truck on a vendor feed is not a city asset record, so nothing is painted here to look populated.</p>
                         <span class="basis">Basis: G-24 stays zero. No hydrant, fleet, or sample inventory on <span data-pack-key>this pack</span>. Contact: city public works director.</span>
                       </div>
@@ -794,7 +1287,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="colstack">
+                  <div class="colstack" tabindex="0">
                     <div class="panel">
                       <div class="panel-head"><span class="t">Counter</span><span class="grow"></span><span class="prov"><b>zero</b></span></div>
                       <div class="panel-body">
@@ -829,7 +1322,7 @@
               </div>
               <div class="assets-tab" id="atab-fixture">
                 <div class="shell-regions">
-                  <div class="colstack">
+                  <div class="colstack" tabindex="0">
                     <div class="panel">
                       <div class="panel-head">
                         <span class="t">Asset record</span>
@@ -854,7 +1347,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="colstack">
+                  <div class="colstack" tabindex="0">
                     <div class="panel">
                       <div class="panel-head"><span class="t">History</span><span class="grow"></span><span class="pill p-quiet">Unread</span></div>
                       <div class="panel-body">
@@ -885,9 +1378,20 @@
               </header>
               <div class="shell-regions solo">
                 <div class="panel">
-                  <div class="panel-head"><span class="t">Function homes</span><span class="grow"></span><span class="prov"><b>67 of 67</b> <span class="sep">|</span> Homes-table row</span><span class="prov"><b>3</b> <span class="sep">|</span> layout-inventory addendum</span></div>
+                  <!-- G-93. Every figure below is BAKED from src/shell-homes.mjs
+                       by scripts/bake-connections.mjs, and web/index.html is an
+                       asserted fixed point of that bake. They used to be
+                       hand-typed copies of a rule that lives in the generator,
+                       which is how the two retired integration counts this page
+                       once carried went stale. Do not edit them here; change the
+                       generator and re-bake. -->
+                  <!-- The retired literals themselves are deliberately NOT quoted
+                       above: src/shell-homes.test.mjs asserts they appear nowhere
+                       in this document, and prose reproducing a forbidden string
+                       is the same defect as shipping it. -->
+                  <div class="panel-head"><span class="t">Function homes</span><span class="grow"></span><span class="prov"><b id="connections-rows">70 of 70</b> <span class="sep">|</span> <span id="connections-rows-rule">register row, from 67 Homes-table rows</span></span><span class="prov"><b id="connections-addenda">5</b> <span class="sep">|</span> <span id="connections-addenda-rule">layout-inventory addendum, from 3 inventory jobs</span></span></div>
                   <div class="panel-body">
-                    <p class="t-caption">Counting rule: one row per Homes-table row in the G-18 function-homes file (primary 31, review-product 7, products 6, feeds 12, other 11), plus three layout-inventory jobs the Homes tables never named. Disposition is one of six: Mounted, Empty, Not built, Island, Killed, Not connected. No live sync time is invented.</p>
+                    <p class="t-caption" id="connections-counting-rule">Counting rule: one row per job. The G-18 function-homes file carries 67 Homes-table rows (primary 31, review-product 7, products 6, feeds 12, other 11) plus 3 layout-inventory jobs the Homes tables never named. A source row that bundled jobs with different dispositions is split into one row per job, each naming its source row, so the register renders 70 and 5. Disposition is one of 6: Mounted, Empty, Not built, Island, Killed, Not connected. No live sync time is invented.</p>
                   </div>
                   <div class="panel-body flush" id="connections-register">
                     <div class="srcreg" data-home-row="1" data-home-table="primary" data-disposition="Mounted"><i class="rail"></i><span class="nm"><b>See the whole city this morning</b><span>Overview</span></span><span class="pill p-restricted">Mounted</span></div>
@@ -954,12 +1458,17 @@
                       <div class="srcreg" data-home-row="62" data-home-table="other" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Data audit</b><span>Connections</span></span><span class="pill p-quiet">Not built</span></div>
                       <div class="srcreg" data-home-row="63" data-home-table="other" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Departments including Parks and Courts</b><span>Parks lens; Municipal court on Connections</span></span><span class="pill p-quiet">Not built</span></div>
                       <div class="srcreg" data-home-row="64" data-home-table="other" data-disposition="Mounted"><i class="rail"></i><span class="nm"><b>Citizen service requests</b><span>Citizen lens. The twelve-tile grid was dropped.</span></span><span class="pill p-restricted">Mounted</span></div>
-                      <div class="srcreg" data-home-row="65" data-home-table="other" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Auth / session / notifications / theme / sign out</b><span>Top bar; People and access</span></span><span class="pill p-quiet">Not built</span></div>
-                      <div class="srcreg" data-home-row="66" data-home-table="other" data-disposition="Mounted"><i class="rail"></i><span class="nm"><b>Status bar integration count</b><span>Connections; nav footer, counted from this register</span></span><span class="pill p-restricted">Mounted</span></div>
-                      <div class="srcreg" data-home-row="67" data-home-table="other" data-disposition="Empty"><i class="rail"></i><span class="nm"><b>City-owned assets</b><span>City Assets</span></span><span class="pill p-quiet">Empty</span></div>
-                      <div class="srcreg" data-home-row="68" data-home-table="layout-inventory" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Print / PDF export of a record</b><span>Action on the record surface that owns the record</span></span><span class="pill p-quiet">Not built</span></div>
-                      <div class="srcreg" data-home-row="69" data-home-table="layout-inventory" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Feedback with screenshot and category</b><span>Top bar; People and access</span></span><span class="pill p-quiet">Not built</span></div>
-                      <div class="srcreg" data-home-row="70" data-home-table="layout-inventory" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Municipal court</b><span>Connections only. Ruled long-tail, not a lens this wave.</span></span><span class="pill p-quiet">Not built</span></div>
+                      <div class="srcreg" data-home-row="65" data-home-table="other" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Auth and session actions</b><span>Top bar account menu; the actions arrive with the People and access build</span></span><span class="pill p-quiet">Not built</span></div>
+                      <div class="srcreg" data-home-row="66" data-home-table="other" data-disposition="Empty"><i class="rail"></i><span class="nm"><b>Notifications</b><span>Top bar notifications tray; empty with its basis, and it prints no count</span></span><span class="pill p-quiet">Empty</span></div>
+                      <div class="srcreg" data-home-row="67" data-home-table="other" data-disposition="Mounted"><i class="rail"></i><span class="nm"><b>Theme, light and dark</b><span>Top bar theme toggle, persisted per device and resolved before first paint</span></span><span class="pill p-restricted">Mounted</span></div>
+                      <div class="srcreg" data-home-row="68" data-home-table="other" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Sign out</b><span>Top bar account menu; ending a session needs the People and access build</span></span><span class="pill p-quiet">Not built</span></div>
+                      <div class="srcreg" data-home-row="69" data-home-table="other" data-disposition="Mounted"><i class="rail"></i><span class="nm"><b>Status bar integration count</b><span>Connections; nav footer, counted from this register</span></span><span class="pill p-restricted">Mounted</span></div>
+                      <div class="srcreg" data-home-row="70" data-home-table="other" data-disposition="Empty"><i class="rail"></i><span class="nm"><b>City-owned assets</b><span>City Assets</span></span><span class="pill p-quiet">Empty</span></div>
+                      <div class="srcreg" data-home-row="71" data-home-table="layout-inventory" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Print / PDF export of a record</b><span>Action on the record surface that owns the record</span></span><span class="pill p-quiet">Not built</span></div>
+                      <div class="srcreg" data-home-row="72" data-home-table="layout-inventory" data-disposition="Mounted"><i class="rail"></i><span class="nm"><b>Feedback</b><span>Top bar account menu composer; delivery is reported per send and never assumed</span></span><span class="pill p-restricted">Mounted</span></div>
+                      <div class="srcreg" data-home-row="73" data-home-table="layout-inventory" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Feedback screenshot attachment</b><span>Top bar account menu composer; the composer takes text only</span></span><span class="pill p-quiet">Not built</span></div>
+                      <div class="srcreg" data-home-row="74" data-home-table="layout-inventory" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Feedback category</b><span>Top bar account menu composer; the composer takes text only</span></span><span class="pill p-quiet">Not built</span></div>
+                      <div class="srcreg" data-home-row="75" data-home-table="layout-inventory" data-disposition="Not built"><i class="rail"></i><span class="nm"><b>Municipal court</b><span>Connections only. Ruled long-tail, not a lens this wave.</span></span><span class="pill p-quiet">Not built</span></div>
                   </div>
                 </div>
               </div>
@@ -974,7 +1483,7 @@
                 <div class="panel">
                   <div class="state">
                     <span class="st-k">Not built</span>
-                    <h5>There is no staff session on this product yet.</h5>
+                    <h2>There is no staff session on this product yet.</h2>
                     <p>This page is where a city attorney reads every grant: who has access to what, who granted it, when, and every revoke including the ones that can be restored. It is also the home for the session, notifications, feedback, theme, and sign out.</p>
                     <span class="basis">Basis: no staff session card has been taken. Everything on this product is the unauthenticated view, which is why no staff name appears anywhere on it.</span>
                   </div>
