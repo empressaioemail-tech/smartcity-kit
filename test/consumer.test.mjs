@@ -304,6 +304,17 @@ const MUST_NOT_COMPILE = [
     id: "a popover the assistive layer cannot name",
     body: '<Pop open>Notifications</Pop>',
   },
+  /* G-93. Two figures are two claims, and each carries its own counting rule.
+     Both halves of that are held at the type: a second figure with no rule of
+     its own, and a second figure while the first has no rule either. */
+  {
+    id: "a second provenance figure with no counting rule",
+    body: '<Prov source="3 of 12 granted" detail="distinct adapter kinds" secondClaim={{ source: "0 of 12 demonstrated" }} />',
+  },
+  {
+    id: "a second provenance figure while the first has no counting rule",
+    body: '<Prov source="3 of 12 granted" secondClaim={{ source: "0 of 12 demonstrated", detail: "this pack generates no records" }} />',
+  },
 ];
 
 test("consumer: the compiler rejects every shape the design law forbids", () => {

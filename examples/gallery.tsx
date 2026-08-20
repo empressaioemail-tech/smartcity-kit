@@ -305,7 +305,7 @@ export const GALLERY: GalleryEntry[] = [
   {
     component: "Prov",
     covers: ["prov", "sep"],
-    from: "index.html, the Public meetings panel head and the navigation-footer source line",
+    from: "index.html, the Public meetings panel head and the navigation-footer source line, which G-93 split into two claims",
     node: (
       <>
         <Prov source="City clerk calendar" detail={<span>unread</span>} />
@@ -313,6 +313,10 @@ export const GALLERY: GalleryEntry[] = [
         <Prov source="67 of 67" detail="Homes-table row" />
         <Prov
           source="Sources not read"
+          secondClaim={{
+            source: "Demonstration not read",
+            detail: <span>no demonstration count has been read for this pack</span>,
+          }}
           detail={
             <>
               <span data-pack-key>this pack</span> <span>no grant count has been read for this pack</span>

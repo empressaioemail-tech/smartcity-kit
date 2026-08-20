@@ -86,6 +86,34 @@ const CASES = [
     node: React.createElement(Prov, { source: "Public record" }),
   },
   {
+    /* G-93. The one shipped chip that carries TWO claims, and the case that
+       holds the interleave. The figures sit together at the head and the two
+       counting rules sit together at the tail; if Prov ever tidied that into
+       figure-rule-figure-rule this case goes red, which is the only reason the
+       component is allowed to emit an order its props do not read in.
+
+       Selected through the .nav-foot ancestor rather than by an index into the
+       thirty-three .prov elements on the page, because an index silently starts
+       comparing a different chip than the case names. */
+    component: "Prov, two claims",
+    selector: ".nav-foot .prov",
+    node: React.createElement(Prov, {
+      source: "Sources not read",
+      secondClaim: {
+        source: "Demonstration not read",
+        detail: React.createElement("span", null, "no demonstration count has been read for this pack"),
+      },
+      detail: React.createElement(
+        React.Fragment,
+        null,
+        React.createElement("span", { "data-pack-key": "" }, "this pack"),
+        " ",
+        React.createElement("span", null, "no grant count has been read for this pack"),
+      ),
+      href: "/?work=connections",
+    }),
+  },
+  {
     component: "Metric, unread",
     selector: "#overview-metrics .metric",
     node: React.createElement(Metric, {
