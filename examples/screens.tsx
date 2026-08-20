@@ -203,17 +203,26 @@ export function TopBar() {
   );
 }
 
-/** Every lens on the roster, and whether it is built. */
+/**
+ * Every lens on the roster, and what its badge claims.
+ *
+ * G-100 retired four not-built claims that had stopped being true. Public
+ * works, Police, Fire and EMS and Fleet are RENDERED now, so they lost the
+ * roster modifier and their badge derives to "Not read" rather than asserting
+ * the screen does not exist. Parks is still genuinely not built and is the
+ * reason the roster arm stays in this table: a composition where every row
+ * takes the same arm cannot show that the two arms differ.
+ */
 const LENSES: Array<{ label: string; href: string; badge?: string; roster?: boolean }> = [
   { label: "Overview", href: "/?lens=city-manager", badge: "Empty" },
   { label: "Development services", href: "/?lens=development-services", badge: "Empty" },
   { label: "Finance", href: "/?lens=finance", badge: "Empty" },
   { label: "Citizen", href: "/?lens=citizen", badge: "Preview" },
-  { label: "Public works", href: "/?lens=public-works", badge: "Not built", roster: true },
+  { label: "Public works", href: "/?lens=public-works", badge: "Not read" },
   { label: "Parks", href: "/?lens=parks", badge: "Not built", roster: true },
-  { label: "Police", href: "/?lens=police", badge: "Not built", roster: true },
-  { label: "Fire and EMS", href: "/?lens=fire-ems", badge: "Not built", roster: true },
-  { label: "Fleet", href: "/?lens=fleet", badge: "Not built", roster: true },
+  { label: "Police", href: "/?lens=police", badge: "Not read" },
+  { label: "Fire and EMS", href: "/?lens=fire-ems", badge: "Not read" },
+  { label: "Fleet", href: "/?lens=fleet", badge: "Not read" },
 ];
 
 export function Sidebar() {
@@ -253,8 +262,17 @@ export function Sidebar() {
         </NavItem>
       </NavGroup>
       <NavFoot>
+        {/* G-93. Two figures, because they are two claims: a granted source is
+            connected, a demonstrated kind is generated fixture data that
+            connects nothing. Both figures sit at the head of the chip and both
+            counting rules sit at the tail, which is the order the product
+            serves and the order Prov emits. */}
         <Prov
           source="Sources not read"
+          secondClaim={{
+            source: "Demonstration not read",
+            detail: <span>no demonstration count has been read for this pack</span>,
+          }}
           detail={
             <>
               {pack} <span>no grant count has been read for this pack</span>
@@ -285,7 +303,14 @@ export function OverviewHeader() {
   );
 }
 
-/** The Across departments register: every lens on the roster and whether it read. */
+/**
+ * The Across departments register: every lens on the roster and whether it read.
+ *
+ * G-100 regrouped this. The four department lenses moved up under Built and
+ * their state became "Not read", because they are rendered and their sources
+ * are absent, which is a different claim from "Not built". What is left under
+ * the third heading is Parks alone, and its description carries the reason.
+ */
 const REGISTER: Array<
   | { group: string }
   | { name: string; description: string; state: string; meaning: "quiet" | "restricted" }
@@ -294,16 +319,16 @@ const REGISTER: Array<
   { name: "Development services", description: "Permits, inspections, licenses", state: "Not connected", meaning: "quiet" },
   { name: "Finance", description: "Adopted budget and fund ledger", state: "Not connected", meaning: "quiet" },
   { name: "Citizen", description: "Public lens, no account required", state: "Preview", meaning: "restricted" },
+  { name: "Public works", description: "CIP, projects, reporting, phones", state: "Not read", meaning: "quiet" },
+  { name: "Police", description: "Patrol, cameras, incident log", state: "Not read", meaning: "quiet" },
+  { name: "Fire and EMS", description: "Occupancies, dispatch, flood and weather", state: "Not read", meaning: "quiet" },
+  { name: "Fleet", description: "Vehicles, drivers, utilisation, safety", state: "Not read", meaning: "quiet" },
   { group: "Work" },
   { name: "Plan review", description: "Submittals against the adopted code", state: "Preview", meaning: "restricted" },
   { name: "Files", description: "The city private filing system", state: "Preview", meaning: "restricted" },
   { name: "Records search", description: "City document search", state: "Not built", meaning: "quiet" },
-  { group: "Roster, not yet built" },
-  { name: "Public works", description: "CIP, projects, reporting, phones", state: "Not built", meaning: "quiet" },
-  { name: "Parks", description: "Department on the roster", state: "Not built", meaning: "quiet" },
-  { name: "Police", description: "Patrol, cameras, incident log", state: "Not built", meaning: "quiet" },
-  { name: "Fire and EMS", description: "Occupancies, dispatch, flood and weather", state: "Not built", meaning: "quiet" },
-  { name: "Fleet", description: "Vehicles, drivers, utilisation, safety", state: "Not built", meaning: "quiet" },
+  { group: "Not built" },
+  { name: "Parks", description: "No vendor, so no region is registered", state: "Not built", meaning: "quiet" },
   { group: "City" },
   { name: "Assets", description: "City-owned inventory", state: "Empty", meaning: "quiet" },
   { name: "Connections", description: "The function register", state: "Mounted", meaning: "restricted" },

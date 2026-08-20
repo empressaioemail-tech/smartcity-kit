@@ -250,6 +250,76 @@ const CASES = [
     rebuild: true,
   },
   {
+    /* G-93, first half. The second claim carries its own counting rule because
+       ProvClaim.detail is not optional, and an absence cannot be watched by
+       reading the clean tree. This injection makes it optional and watches the
+       gate go red.
+
+       It is aimed at test/consumer.test.mjs and NOT at test/law.test.mjs, which
+       is where it was first written and where it ran SILENT: relaxing a
+       required prop to optional changes no rendered output and no source string
+       law.test.mjs asserts, so the law suite passed on the injected tree. The
+       only instrument that can see a type get weaker is the one that compiles a
+       forbidden program against the packed tarball. The needle is the offending
+       case's own id, so a compiler failing for an unrelated reason cannot score
+       as this gate working. */
+    gate: "law: two claims two rules",
+    what: "the second provenance figure can arrive with no counting rule",
+    file: "src/status.tsx",
+    mutate: (t) => t.replace("  /** This claim's own counting rule or read state. Not optional. */\n  detail: React.ReactNode;\n};", "  /** This claim's own counting rule or read state. Not optional. */\n  detail?: React.ReactNode;\n};"),
+    test: "test/consumer.test.mjs",
+    expect: "a second provenance figure with no counting rule",
+    rebuild: true,
+  },
+  {
+    /* And the second half of the same type-level rule: a second figure while the
+       FIRST has no counting rule. That one is held by the two-claim arm of the
+       union making `detail` required, not by ProvClaim, so relaxing ProvClaim
+       alone leaves it standing and it needs its own injection.
+
+       The mutation relaxes the arm rather than collapsing the union, because a
+       collapse does not compile and a case that cannot build reports SILENT
+       with a build error rather than proving anything. Watched, then corrected:
+       the first draft of this case did exactly that. */
+    gate: "law: two claims two rules",
+    what: "a chip can carry a second counting rule while the first figure has none",
+    file: "src/status.tsx",
+    mutate: (t) => t.replace("  /** Required on this arm: a chip cannot carry a second counting rule and no first one. */\n  detail: React.ReactNode;\n  secondClaim: ProvClaim;", "  /** Required on this arm: a chip cannot carry a second counting rule and no first one. */\n  detail?: React.ReactNode;\n  secondClaim: ProvClaim;"),
+    test: "test/consumer.test.mjs",
+    expect: "a second provenance figure while the first has no counting rule",
+    rebuild: true,
+  },
+  {
+    /* G-93, second half: the rendered order. A source-only check passes on a
+       component that keeps the type and tidies the interleave into
+       figure-rule-figure-rule, which would be the product's shape intact in the
+       types and gone from the page. */
+    gate: "law: two claims two rules",
+    what: "Prov tidies the interleave so each rule follows its own figure",
+    file: "src/status.tsx",
+    mutate: (t) =>
+      t.replace(
+        '          <span className="sep">|</span> <b>{secondClaim.source}</b>',
+        '          <span className="sep">|</span> <b>{secondClaim.source}</b> <span className="sep">|</span> {secondClaim.detail}',
+      ),
+    test: "test/law.test.mjs",
+    expect: "FIGURE-A",
+    rebuild: true,
+  },
+  {
+    /* G-95. The heading level is derived from the vendored stylesheet, so the
+       injection puts the skipped level back and watches the divergence test go
+       red. This is the case that would have caught the h5 the re-vendor
+       surfaced, months before a markup-parity case on one screen did. */
+    gate: "divergence: state heading level",
+    what: "State goes back to emitting a heading the stylesheet does not paint",
+    file: "src/surfaces.tsx",
+    mutate: (t) => t.replace("<h2>{heading}</h2>", "<h5>{heading}</h5>"),
+    test: "test/law.test.mjs",
+    expect: "the shipped stylesheet does not paint",
+    rebuild: true,
+  },
+  {
     gate: "markup parity",
     what: "a component adds a wrapper the product does not have",
     file: "src/status.tsx",

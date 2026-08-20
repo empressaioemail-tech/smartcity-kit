@@ -101,6 +101,19 @@ export function Tab({
  * `kicker`, `heading` and `basis` are all required. An absence with no stated
  * basis is a type error rather than a review comment, which is the only way a
  * rule of this kind survives contact with a design agent.
+ *
+ * THE HEADING IS AN h2 AND THE LEVEL IS NOT COSMETIC. G-95 raised it from h5
+ * because every one of these sits directly under the page h1, so an h5 skipped
+ * three levels and misrepresented the document outline: 1.3.1 Info and
+ * Relationships, and 2.4.6 Headings and Labels in a conformance report. The
+ * product dropped h5 from the selector in the same commit, deliberately, so a
+ * re-introduced skip renders UNSTYLED rather than looking correct on screen.
+ * That means this element and `vendor/shell.css` are one rule with two
+ * implementations, which DEV_PROCESS 2.4 says needs a divergence test rather
+ * than two careful edits. `test/law.test.mjs` reads the heading element out of
+ * the vendored stylesheet and asserts this component renders that element, so a
+ * future re-vendor that moves the level turns the kit red instead of quietly
+ * emitting an element nothing styles.
  */
 export function State({
   kicker,
@@ -119,7 +132,7 @@ export function State({
   return (
     <div className={cx("state", compact && "compact")} {...rest}>
       <span className="st-k">{kicker}</span>
-      <h5>{heading}</h5>
+      <h2>{heading}</h2>
       {children === undefined ? null : <p>{children}</p>}
       <Basis>{basis}</Basis>
     </div>

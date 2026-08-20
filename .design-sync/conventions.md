@@ -32,6 +32,8 @@ Resting panels are `.panel`: `--sc-surface`, 1px `--sc-line`, `--sc-r` 6px, no s
 
 `.prov` is source name, `.sep`, last-read. Every value that came from somewhere carries one in the panel head. It is not openable. Do not merge it with an evidence chip. Do not put a vendor logo in the chrome.
 
+**A chip can carry TWO figures, and when it does each one carries its own counting rule.** The navigation footer is the shipped example: how many sources are granted, and how many kinds are demonstrated with generated fixture records, which are two different claims because a demonstration connects nothing. Draw both figures together at the head of the chip and both counting rules together at the tail, separated by `.sep`, which is the order the product serves and the order the component emits. Do not pair each rule under its own figure and do not draw a third figure: there is no shape for one. The component API has no way to add a second figure without a rule for it, so a design that shows a bare second number cannot be built.
+
 ## Shell
 
 `.shell` / `.shell-top` / `.shell-body` / `.shell-nav` / `.shell-main` / `.shell-regions`. Top bar is 52px and carries city (`.seal` `.brandcity`), environment (`.env`), search, who you are. It is not navigation. Sidebar is `.shell-nav` with `.navgroup` / `.navitem` / `.nav-foot`. Page header is `.pagehead`: `.crumb`, `.titlerow`, `.lede`, then `.metrics` with at most four `.metric` tiles. Work surface is `.shell-regions` (two columns) or `.shell-regions.solo`. Map and document sit in `.region` (`.region-bar`, `.region-canvas`, `.region-foot`), inside our border.

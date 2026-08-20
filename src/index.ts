@@ -26,7 +26,7 @@ export {
 export type { TextStep, ButtonKind, ButtonSize } from "./primitives";
 
 export { Pill, Prov, Basis, Seal, BrandCity, EnvBadge } from "./status";
-export type { Meaning } from "./status";
+export type { Meaning, ProvClaim, ProvProps } from "./status";
 
 export {
   Panel,

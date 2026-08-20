@@ -47,6 +47,41 @@ export function Pill({
 /* -------------------------------------------------------------- provenance */
 
 /**
+ * A SECOND claim on one provenance chip.
+ *
+ * G-93 split the navigation footer figure in two, and the product stated why in
+ * the markup it ships: "TWO FIGURES, BECAUSE THEY ARE TWO CLAIMS. A granted
+ * source is connected; a demonstrated kind is generated fixture data that
+ * connects nothing." Both members are REQUIRED, and that is the whole point of
+ * making this a pair rather than two loose props. A second figure is a second
+ * number on the same chip, and a number whose counting rule is optional is a
+ * number that will eventually ship without one.
+ */
+export type ProvClaim = {
+  /** The bold figure or label for this claim. */
+  source: React.ReactNode;
+  /** This claim's own counting rule or read state. Not optional. */
+  detail: React.ReactNode;
+};
+
+type ProvOneClaim = {
+  source: React.ReactNode;
+  detail?: React.ReactNode;
+  secondClaim?: never;
+  href?: string;
+};
+
+type ProvTwoClaims = {
+  source: React.ReactNode;
+  /** Required on this arm: a chip cannot carry a second counting rule and no first one. */
+  detail: React.ReactNode;
+  secondClaim: ProvClaim;
+  href?: string;
+};
+
+export type ProvProps = (Base<HTMLSpanElement> | AnchorBase) & (ProvOneClaim | ProvTwoClaims);
+
+/**
  * The provenance chip: where a value came from, and when it was read.
  *
  * `source` is required and renders inside the bold slot, so there is no shape
@@ -63,24 +98,56 @@ export function Pill({
  *
  * Renders an anchor when `href` is given, matching the product, where the
  * navigation footer chip links into the register it counts.
+ *
+ * TWO CLAIMS, AND THE ORDER THEY PAINT IN. `secondClaim` adds a second bold
+ * figure. The emitted order is
+ *
+ *     <b>source</b> | <b>secondClaim.source</b> | detail | secondClaim.detail
+ *
+ * so the two figures sit together at the head of the chip and the two counting
+ * rules sit together at the tail. THIS IS NOT THE ORDER THE PROPS READ IN, and
+ * it is deliberate: it is the order smartcity-dashboards ships at
+ * `web/index.html` `.nav-foot .prov`, and `.prov` is `display:inline-flex` with
+ * a flat gap, so DOM order is paint order and a wrapper that tidied it into
+ * figure-rule-figure-rule would be rendering markup the product does not have.
+ * Held by `test/law.test.mjs`, by a markup-parity case against the shipped
+ * chip, and by `scripts/prove-gates.mjs` injections, not by this comment.
+ *
+ * What this component REFUSES, by shape rather than by review:
+ *
+ *   - a second figure with no counting rule of its own. `ProvClaim.detail` is
+ *     required.
+ *   - a second figure while the first has none. `detail` is required on the
+ *     two-claim arm of the union, so `<Prov source secondClaim>` does not
+ *     compile.
+ *   - a third claim. There is no prop for one and the product ships none, so a
+ *     case built on it could never fail for the right reason.
+ *   - re-ordering the interleave. The order is emitted, never passed in.
  */
-export function Prov({
-  source,
-  detail,
-  href,
-  ...rest
-}: (Base<HTMLSpanElement> | AnchorBase) & {
-  source: React.ReactNode;
-  detail?: React.ReactNode;
-  href?: string;
-}) {
+export function Prov(props: ProvProps) {
+  const { source, detail, secondClaim, href, ...rest } = props as ProvProps & {
+    detail?: React.ReactNode;
+    secondClaim?: ProvClaim;
+  };
   const inner = (
     <>
       <b>{source}</b>
+      {secondClaim === undefined ? null : (
+        <>
+          {" "}
+          <span className="sep">|</span> <b>{secondClaim.source}</b>
+        </>
+      )}
       {detail === undefined ? null : (
         <>
           {" "}
           <span className="sep">|</span> {detail}
+        </>
+      )}
+      {secondClaim === undefined ? null : (
+        <>
+          {" "}
+          <span className="sep">|</span> {secondClaim.detail}
         </>
       )}
     </>

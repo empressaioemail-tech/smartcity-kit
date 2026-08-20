@@ -251,3 +251,111 @@ test("environment: EnvBadge has no default, so a demo can never render as live b
   assert.match(source, /environment:\s*"demo"\s*\|\s*"live"\s*\|\s*"staging";/);
   assert.doesNotMatch(source, /environment\s*=\s*"/);
 });
+
+/* ------------------------------------- G-93, two claims on one provenance chip */
+
+test("law: a second provenance figure cannot arrive without its own counting rule", () => {
+  /* The product wrote this rule, not this package. web/index.html above the
+     navigation footer chip: "TWO FIGURES, BECAUSE THEY ARE TWO CLAIMS. A
+     granted source is connected; a demonstrated kind is generated fixture data
+     that connects nothing. Both are per-pack, both are derived in
+     src/city-identity.mjs packSources(), and each carries its own counting rule
+     beside it."
+
+     Held by SHAPE rather than by review. The second figure and its rule arrive
+     as one object whose `detail` is not optional, so there is no call that puts
+     a second number on the chip with nothing saying what it counts.
+     test/consumer.test.mjs watches the compiler reject both halves of that
+     through the packed tarball; this asserts the shape is still in the source
+     that produces those types, so a component that keeps the type and stops
+     emitting the second rule also fails. */
+  const source = readLf(join(ROOT, "src/status.tsx"));
+  assert.match(source, /export type ProvClaim = \{/);
+  assert.match(source, /secondClaim\?: never;/);
+
+  const one = render(React.createElement(kit.Prov, { source: "Public record" }));
+  assert.equal(one, '<span class="prov"><b>Public record</b></span>');
+
+  const two = render(
+    React.createElement(kit.Prov, {
+      source: "3 of 12 sources granted",
+      detail: "distinct adapter kinds granted on this pack",
+      secondClaim: {
+        source: "0 of 12 demonstrated with fixture records",
+        detail: "this pack generates no records",
+      },
+    }),
+  );
+  assert.equal(
+    two,
+    '<span class="prov"><b>3 of 12 sources granted</b> <span class="sep">|</span> ' +
+      '<b>0 of 12 demonstrated with fixture records</b> <span class="sep">|</span> ' +
+      "distinct adapter kinds granted on this pack <span class=\"sep\">|</span> " +
+      "this pack generates no records</span>",
+  );
+});
+
+test("law: the two figures paint together and the two rules paint together", () => {
+  /* This is the shipped order and it is NOT the order the props read in, which
+     is exactly why it is asserted rather than documented. `.prov` is
+     display:inline-flex with a flat 6px gap, so DOM order is paint order: a
+     component that emitted figure, rule, figure, rule would look tidier in the
+     call site and would be markup smartcity-dashboards does not serve.
+
+     Measured on the rendered output rather than on the source, so a refactor
+     that keeps the props and moves the slots fails here. */
+  const html = render(
+    React.createElement(kit.Prov, {
+      source: "FIGURE-A",
+      detail: "RULE-A",
+      secondClaim: { source: "FIGURE-B", detail: "RULE-B" },
+    }),
+  );
+  const order = [...html.matchAll(/FIGURE-A|FIGURE-B|RULE-A|RULE-B/g)].map((m) => m[0]);
+  assert.deepEqual(order, ["FIGURE-A", "FIGURE-B", "RULE-A", "RULE-B"]);
+  /* Three separators, one between each of the four segments. */
+  assert.equal(html.split('<span class="sep">|</span>').length - 1, 3);
+});
+
+/* --------------------------- G-95, the absence heading level is not cosmetic */
+
+test("divergence: the State heading is the element the vendored stylesheet styles", () => {
+  /* DEV_PROCESS 2.4. `src/surfaces.tsx` and `vendor/shell.css` are two
+     implementations of one rule, and a paired control needs a divergence test
+     rather than two careful edits.
+
+     G-95 raised this heading from h5 to h2 for 1.3.1 and 2.4.6, because every
+     .state sits directly under the page h1 and an h5 skipped three levels. The
+     product dropped h5 from the selector in the same commit ON PURPOSE, so a
+     re-introduced skip renders unstyled instead of looking correct. Without
+     this test the kit could keep emitting h5 forever: gate 3 counts CLASSES and
+     would never see it, and the only thing that caught it here was a
+     markup-parity case that exists for one screen.
+
+     The expected element is READ OUT OF the stylesheet, never pinned, so the
+     next re-vendor that moves the level turns this red rather than shipping a
+     silent mismatch. Comments are stripped first for the same reason
+     stylesheetClasses() strips them: the G-95 comment block talks about h5 and
+     h1 in prose, and a rule that read prose would find three elements here. */
+  const css = readLf(join(ROOT, "vendor/shell.css")).replace(/\/\*[\s\S]*?\*\//g, "");
+  const styled = [...new Set([...css.matchAll(/\.state\s+(h[1-6])\b/g)].map((m) => m[1]))];
+  assert.equal(
+    styled.length,
+    1,
+    `the vendored stylesheet styles ${styled.length} heading elements under .state (${styled.join(", ")}). This test assumes exactly one and must be re-read, not relaxed, if the product ships two.`,
+  );
+  const html = render(
+    React.createElement(kit.State, {
+      kicker: "No live operations",
+      heading: "Nothing yet.",
+      basis: "no grant",
+    }),
+  );
+  const rendered = html.match(/<(h[1-6])>/);
+  assert.ok(rendered, "State rendered no heading element at all");
+  assert.equal(
+    rendered[1],
+    styled[0],
+    `State emits <${rendered[1]}> and vendor/shell.css styles .state ${styled[0]}. The kit is rendering an element the shipped stylesheet does not paint.`,
+  );
+});
